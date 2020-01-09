@@ -1,0 +1,144 @@
+---
+title: "Create Supporting knownIsoforms and BED Files"
+author: "Hillary Heiling"
+date: "January 7, 2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Introductory Notes
+
+Each section, corresponding to each of 4 steps, will have the following componenets: 
+
+* A brief description of what the step does
+* A NOTES section that explains the inputs arguments and any other relevant information needed to run the code. Please read the NOTES in each section carefully before proceding with entering the input arguments
+* Code that should be edited with the input arguments appropriate for your IsoDeconvMM project
+* Code to run the provided scripts. All path specifications in the `sprintf()` statements in this document as well as in the code scripts assume the paths incorporate forward slashes, `/`. If the paths in your operating system use backward slashes instead, \, you will need to edit that in this document as well as in all script documents. 
+
+Please read the NOTES under each section carefully before proceding with entering input arguments and running the code.
+
+## Needed Libraries in R
+
+```{r}
+library(isoform) # Step 06
+```
+
+The isoform package and its vignettes can be found in Dr. Wei Sun's "Sun Lab" software page:
+
+<https://research.fhcrc.org/sun/en/software.html>
+
+## Step 00 Check Data
+
+Begin by downloading the GTF file (file ending with extension .gtf) associated with the genes of interest. Then run the "step0_check_data.sh" shell script, plugging in the correct name of the .gtf file.
+
+## Step 01 Updated Ensembl gtf and Step 02 Get Ensembl Exon GTF
+
+These perl files are only needed if the chromosome names don't start with 'chr' (chromosome ID must start with chr). If necessary, please run the scripts "step1_update_ensembl_gtf.pl" and "step2_get_ensembl_exon_gtf.pl" in perl. Before running the scripts, you will need to manually change the name of the reference GTF file inside of the perl script.
+
+If these scripts are run, the code creates GTF files with extensions '.exon.gtf'. 
+
+## Step 03 Ensemble Unique Exons
+
+Using the '.exon.gtf' GTF file from Steps 01-02 (or the original .gtf file if Steps 01-02 are unnecessary), creates a 'unique.exon.gtf' file.
+
+### NOTES:
+
+* `annoVersion`: character string of the prefix of the .gtf file of interest.
+
+* `directory`: character string of the directory where the .gtf file of interest is located and where all derivative .gtf files and .RData objects will be created. 
+
+NOTE: The current code assumes that Steps 01-02 were run, so as default a derivative file with the extension '.exon.gtf' (instead of '.gtf') is used in Step 03. If you did not need to use the perl code in Steps 01-02, please edit the `ff` sprintf() statement below accordingly.
+
+NOTE: The current code assumes all directory paths utilize forward slashes, `/`. If this is not the case in your environment, you will need to edit the `sprintf()` statements in this document as well as in the sourced code scripts.
+
+* `scriptDir`: character string of the directory where the "Create_Supporting_Files/" scripts are located
+
+```{r}
+annoVersion = "Mus_musculus.NCBIM37.67"
+
+directory = "~/research/data/mouse/" 
+
+scriptDir =  "C:/Users/hheiling/Documents/GitHub/deconvolution/Create_Supporting_Files"
+
+ff  = sprintf("%s.exon.gtf", annoVersion)
+```
+
+### Run Step 03
+
+Running the sourced code will create a 'sprintf("%s.unique.exon.gtf", annoVersion)' .gtf file to the `directory` specified above. 
+
+```{r}
+source(sprintf("%s/step3_ensemble_unique_exons.R", scriptDir))
+```
+
+## Step 04 Ensembl Nonoverlap Exons
+
+Creates the PNG files "ensembl_gaps_unique_exons.png" and "ensembl_gaps_nonoverlap_exons.png" in the `figureDir` folder (specified below), some histograms, and a new .gtf file ending in suffix '.nonoverlap.exon.gtf' ('sprintf("%s.nonoverlap.exon.gtf", annoVersion)') in the `directory` folder
+
+### NOTES:
+
+* `figureDir`: character string of the directory where the user would like the output PNG files to be directed.
+
+```{r}
+figureDir = "~/research/data/mouse/figures"
+```
+
+
+### Run Step 04
+
+```{r}
+source(sprintf("%s/step4_ensembl_nonoverlap_exons.R", scriptDir))
+```
+
+
+## Step 05 Ensembl Nonoverlap Exons BED
+
+Creates the BED file with suffix 'nonoverlap.exon.bed' ('sprintf("%s.nonoverlap.exon.bed", annoVersion)') in the `directory` folder. This BED file will be used in the IsoDeconvMM package for the  `bedFile` argument.
+
+### NOTES:
+
+### Run Step 05
+
+```{r}
+source(sprintf("%s/step5_ensembl_nonoverlap_exons_bed.R", scriptDir))
+```
+
+
+## Step 06 Load Known Isoform
+
+Creates the knownIsoforms .RData object ('sprintf("%s.nonoverlap.exon.knownIsoforms.RData", annoVersion)'). When loaded, the object will be named `isoAll`. This knownIsoforms RData object will be used in the IsoDeconvMM package for the `knownIsoforms` argument.
+
+### NOTES:
+
+You will need to load the `isoform` package (mentioned in Needed Libraries section) in order to run the `knownIsoforms()` function.
+
+### Run Step 06
+
+```{r}
+library(isoform)
+source(sprintf("%s/step6_load_known_isoform.R", scriptDir))
+```
+
+## Step 07 Combine Anno
+
+Creates the nTE.RData object and deposits it in the `directory` folder. When loaded, this object will be a data.frame named `nTE` with the following columns: geneId (ensembl name of gene), nE (number of exons), nT (number of transcripts), clustID (name of the cluster ID)
+
+### NOTES:
+
+As in Step 03, if Steps 01-02 were NOT run and a derivative .gtf function with suffix '.exon.gtf' was NOT created, you will need to edit the `ref` input argument below by updating the `sprintf()` statement. However, if Steps 01-02 were run, there is no need to edit the code. 
+
+```{r}
+ref  = sprintf("%s.exon.gtf", annoVersion)
+```
+
+### Run Step 07
+
+```{r}
+source(sprintf("%s/step7_combine_anno.R", scriptDir))
+```
+
+
+The End
