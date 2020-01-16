@@ -36,8 +36,6 @@ BAM_list
 
 bam2use = BAM_list
 
-# nchar("_sorted_by_name") = 15
-
 #Loop across all BAM files in the folder:
 for(i in 1:length(BAM_list)){
   
@@ -66,7 +64,7 @@ for(i in 1:length(BAM_list)){
   # ----------------------------------------------------------
   prepareBAM(bamF, sprintf("%s/%s", inputDirectory, sami), sortIt=FALSE)
   
-  # system(sprintf("rm %s", bamF))
+  system(sprintf("rm %s", sami))
   
   # ----------------------------------------------------------
   # counting again
