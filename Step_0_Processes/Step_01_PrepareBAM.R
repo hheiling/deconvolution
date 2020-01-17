@@ -43,7 +43,11 @@ for(i in 1:length(BAM_list)){
   
   #Generates a name that can be used in the files by stripping 
   #off the ".bam" extension: 
-  sami = substr(bam2use[i],start=1,stop=nchar(bam2use[i])-4) 
+  if(str_detect(bami, "_sorted_by_name.bam$")){
+    sami = substr(bam2use[i],start=1,stop=nchar(bam2use[i])-4)
+  }else{
+    sami = str_c(substr(bam2use[i],start=1,stop=nchar(bam2use[i])-4), "_sorted_by_name")
+  }
   
   # ----------------------------------------------------------
   # counting
@@ -64,32 +68,22 @@ for(i in 1:length(BAM_list)){
   # ----------------------------------------------------------
   prepareBAM(bamF, sprintf("%s/%s", inputDirectory, sami), sortIt=FALSE)
   
-  system(sprintf("rm %s/%s", inputDirectory, sami))
-  
   # ----------------------------------------------------------
   # counting again
   # ----------------------------------------------------------
-  cmd3   = sprintf("samtools view %s/%s_sorted_by_name_uniq_filtered.bam | wc -l >> %s\n", inputDirectory, sami, ctF)
+  cmd3   = sprintf("samtools view %s/%s_uniq_filtered.bam | wc -l >> %s\n", inputDirectory, sami, ctF)
   system(cmd3)
   
-  system(sprintf("rm %s/count_%s.txt", inputDirectory, sami))
+  system(sprintf("rm %s/%s", inputDirectory, sami))
+  # system(sprintf("rm %s/count_%s.txt", inputDirectory, sami))
   
 }
 
-# ----------------------------------------------------------
-# sorting by position
-# ----------------------------------------------------------
-#Generate initial list of files: 
-to_sort_list = list.files(path = inputDirectory, pattern="sorted_by_name_uniq_filtered.bam")
+output_list = list.files(path = inputDirectory, pattern = "sorted_by_name_uniq_filtered.bam")
 
-#Checks length of BAM files to ensure all has run properly:
-length(to_sort_list)
-
-#Displays BAM list as another check for errors:
-to_sort_list
-
-for(i in 1:length(to_sort_list)){
-  cmd4 = sprintf("samtools sort %s -o %s/%s", to_sort_list[i], workingDirectory, to_sort_list[i])
-  system(cmd4)
+if(inputDirectory != workingDirectory){
+  for(i in 1:length(output_list)){
+    cmd4 = sprintf("cp %s/%s %s/%s \n", inputDirectory, output_list[i], 
+                   workingDirectory, output_list[i])
+  }
 }
-
