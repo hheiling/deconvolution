@@ -64,13 +64,15 @@ for(i in 1:length(BAM_list)){
   # ----------------------------------------------------------
   prepareBAM(bamF, sprintf("%s/%s", inputDirectory, sami), sortIt=FALSE)
   
-  system(sprintf("rm %s", sami))
+  system(sprintf("rm %s/%s", inputDirectory, sami))
   
   # ----------------------------------------------------------
   # counting again
   # ----------------------------------------------------------
   cmd3   = sprintf("samtools view %s/%s_sorted_by_name_uniq_filtered.bam | wc -l >> %s\n", inputDirectory, sami, ctF)
   system(cmd3)
+  
+  system(sprintf("rm %s/count_%s.txt", inputDirectory, sami))
   
 }
 
