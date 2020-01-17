@@ -6,22 +6,22 @@
 #-------------------------------------------------------------#
 
 # Needed arguments (see Step_0_Directions.Rmd for details):
-# mixture_files, pure_files, mixture_labels, pure_labels, readLen
+# mixture_files, pure_files, mix_labels, pure_labels, readLen
 
 # BAM Files where sequenced reads are located:
 inputFiles = c(mixture_files, pure_files)
 
 # Associated Labels for output files:
-outputLabels = c(mixture_labels, pure_labels)
+outputLabels = c(mix_labels, pure_labels)
 
 # If any files are to be combined, list them in separate units:
 comboList = list()
 for(i in 1:length(mixture_files)){
-  comboList[[i]] = c(str_c(pure_labels, "_lengths.txt"), str_c(mixture_label[i], "_lengths.txt"))
+  comboList[[i]] = c(str_c(pure_labels, "_lengths.txt"), str_c(mix_labels[i], "_lengths.txt"))
 }
 
 # Combo Output Labels:
-comboLabels = mixture_labels
+comboLabels = mix_labels
 
 
 fragLengths<-function(Input_Files,outputLabels,comboList,comboLabels,useCombo){
@@ -48,7 +48,7 @@ fragLengths<-function(Input_Files,outputLabels,comboList,comboLabels,useCombo){
       cat(sprintf("start comboList %i \n", k))
       cmd2_b = sprintf("cat %s | sort -n | uniq -c > %s_fraglens.txt",ftc[k],comboLabels[k])
       system(cmd2_b)
-      cat(sprintf("comboList %i done \n"), k)
+      cat(sprintf("comboList %i done \n", k))
     }
     
   }
