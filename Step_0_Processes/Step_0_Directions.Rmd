@@ -57,23 +57,9 @@ The Step 01 code performs sorting and some basic QC of all of the .bam files pre
 
 ```{r}
 
-# inputDirectory = "/home/hheiling_unc_edu/deconvolution/test_process"
-# 
-# workingDirectory = "/home/hheiling_unc_edu/deconvolution/test_process/test_materials"
-# 
-# if(is.null(workingDirectory)){
-#   workingDirectory = inputDirectory
-# }
-# 
-# fileDirectory = "C:/Users/hheiling/Documents/GitHub/deconvolution/Step_0_Processes"
+inputDirectory = "/home/hheiling_unc_edu/deconvolution/test_process"
 
-```
-
-```{r}
-
-inputDirectory = "/home/hheiling_unc_edu/Step_01_test"
-
-workingDirectory = "/home/hheiling_unc_edu/Step_01_test/Step_01_output"
+workingDirectory = "/home/hheiling_unc_edu/deconvolution/test_process/test_materials"
 
 if(is.null(workingDirectory)){
   workingDirectory = inputDirectory
