@@ -16,8 +16,7 @@ Each section, corresponding to each of 4 steps, will have the following componen
 * A brief description of what the step does
 * A NOTES section that explains the inputs arguments. Please read the NOTES under each section carefully before proceding with entering the input arguments
 * Code that should be edited with the input arguments appropriate for your IsoDeconvMM project
-* Code to run the provided scripts. All path specifications in the `sprintf()` statements in this document as well as in the code scripts assume the paths incorporate forward slashes, /. If the paths in your operating system use backward slashes instead, \, you will need to edit that in all script documents. 
-
+* Code to run the provided scripts. All path specifications in the `sprintf()` statements in this document as well as in the code scripts assume the paths incorporate forward slashes, /. If the paths in your operating system use backward slashes instead, \, you will need to edit that in this document as well as all script documents. 
 
 Please read the NOTES under each section carefully before proceding with entering input arguments and running the code.
 
@@ -26,7 +25,7 @@ Please read the NOTES under each section carefully before proceding with enterin
 In order to run the code, you will need to run the code in R in a Linux environment (command line). You will need the following additional programs installed in your Linux environment:
 
 * samtools (recommended: version 1.3.1 or higher)
-* Optional: picard.jar with the following available programs: DownsampleSam and MergeSamFiles (recommended: version 2.21.2 or higher). Only needed if you desire to simulate mixture samples from pure sample cell type data.
+* Optional: picard.jar (recommended: version 2.21.2 or higher) with the following available programs: DownsampleSam and MergeSamFiles. Only needed if you desire to simulate mixture samples from pure sample cell type data.
 
 Needed libraries in R:
 
@@ -36,7 +35,7 @@ library(asSeq) # Step 01
 library(isoform) # Step 03
 ```
 
-The asSeq and isoform packages and their vignettes can be found in Dr. Wei Sun's "Sun Lab" software page:
+The `asSeq` and `isoform` packages and their vignettes can be found in Dr. Wei Sun's "Sun Lab" software page:
 
 <https://research.fhcrc.org/sun/en/software.html>
 
@@ -44,42 +43,52 @@ The asSeq and isoform packages and their vignettes can be found in Dr. Wei Sun's
 
 ### Description:
 
-The Step 01 code performs sorting and some basic QC using function prepareBAM from R package`asSeq`. New .bam file has the added suffix "_sorted_by_name_uniq_filtered.bam"
+The Step 01 code performs sorting and some basic QC of all of the .bam files present in the `inputDirectory` (described in NOTES) using function `prepareBAM` from R package `asSeq`. New .bam files have the added suffix "_sorted_by_name_uniq_filtered.bam". For more information on `prepareBAM`, see the `asSeq` vignette.
 
 ### NOTES:
 
-**Got rid of 'rm' statement, may no longer overwrite stuff. Need to check**
+`inputDirectory`: character string of the directory with the copies of the .bam files for the mixture and pure cell type samples. Recommendation: keep a copy of all of the original .bam files in a separate directory, and in this input directory, edit the names of the .bam files (if needed) in order to make sure the mixture files and the pure cell type files are easily identifiable (i.e. so you can identify the mixture files using the function `list.files(path = some_Directory, pattern = "mix_pattern")` in Step 04, and likewise for the pure cell type files).
 
-`inputDirectory`: character string of the directory with the copies of the .bam files for the mixture and pure cell type samples. 
-
-`workingDirectory`: character string of an optional, but recommended, directory where you want to output the "sorted_by_name_uniq_filtered.bam" files, now sorted by postition, to go, and will serve as the working and output directories for all later processes outlined in this document. If kept as `NULL`, the `workingDirectory` will automatically be the `inputDirectory`.
+`workingDirectory`: character string of an optional, but recommended, directory where you want to output the "sorted_by_name_uniq_filtered.bam" files, now sorted by name, to go, and will serve as the working and output directories for all later processes outlined in this document. If kept as `NULL`, the `workingDirectory` will automatically be the `inputDirectory`.
 
 `fileDirectory`: character string of the directory where the Step_01 to Step_04 code script files were downloaded.
 
 ### Enter appropriate arguments:
 
 ```{r}
-#-----------------------------------------------------------------------------#
-# CAUTION!! See note before specifying inputDirectory                         #
-#-----------------------------------------------------------------------------#
-inputDirectory = "/home/hheiling_unc_edu/deconvolution/test_process"
 
-workingDirectory = "/home/hheiling_unc_edu/deconvolution/test_process/test_materials"
+# inputDirectory = "/home/hheiling_unc_edu/deconvolution/test_process"
+# 
+# workingDirectory = "/home/hheiling_unc_edu/deconvolution/test_process/test_materials"
+# 
+# if(is.null(workingDirectory)){
+#   workingDirectory = inputDirectory
+# }
+# 
+# fileDirectory = "C:/Users/hheiling/Documents/GitHub/deconvolution/Step_0_Processes"
+
+```
+
+```{r}
+
+inputDirectory = "/home/hheiling_unc_edu/Step_01_test"
+
+workingDirectory = "/home/hheiling_unc_edu/Step_01_test/Step_01_output"
 
 if(is.null(workingDirectory)){
   workingDirectory = inputDirectory
 }
 
-fileDirectory = "C:/Users/hheiling/Documents/GitHub/deconvolution/Step_0_Processes"
+fileDirectory = "/home/hheiling_unc_edu/deconvolution/Step_0_Processes"
 
 ```
-
 
 ### Run Step 01
 
 Reminder: Depending on your operating system, you may need to modify the path in the `sprintf()` statement below as well as several `sprinf()` statments in the sourced file if your directory paths require backward slashes instead of forward slashes.
 
 ```{r}
+library(stringr)
 library(asSeq)
 source(sprintf("%s/Step_01_PrepareBAM.R", fileDirectory))
 ```
@@ -88,20 +97,55 @@ source(sprintf("%s/Step_01_PrepareBAM.R", fileDirectory))
 
 ### Description:
 
+Simulates mixture files from pure cell type reference files. Optional step; if no need to simulate mixture files, proceed to Step 03.
+
+In order to run this code, you need to first sort the .bam files by position (see code below)
+
 ### NOTES:
 
 The picard.jar program must have the DownsampleSam and MergeSamFiles options available
 
-`sim`: logical, do you want to simulate mixture files from pure cell type files?
+`sim`: logical, do you want to simulate mixture files from pure cell type files? Default FALSE
+
 `workingDirectory`: same as in Step 01
+
 `inFiles`: The pure cell type files you want to sample from to create the mixture files, one file for each cell type
+
 `cellTypes`: name of pure cell types, same order as the inFiles
+
 `prop.mat`: matrix of percents of the pure cell type samples of which the mixture samples should be composed. Columns correspond to the cellTypes, rows correspond to distinct combinations of cell type combinations.
+
 `seeds`: integer matrix of random seeds to use for the downsampling algorithm
+
 `mix_outputs`: optional character vector for desired names of resulting mixture files. Must contain .bam extension within the name. Default format: "mf_cellType1_P1_cellType2_P2_..._cellTypek_Pk.bam"
 where Pj is the percent of each cellType selected to be in the mixture sample (i.e. 10, 20, ...).
 
-### Enter appropriate arguments:
+### Sort bam files by position
+
+```{r}
+# ----------------------------------------------------------
+# sorting by position
+# ----------------------------------------------------------
+#Generate initial list of files: 
+to_sort_list = list.files(path = inputDirectory, pattern="sorted_by_name_uniq_filtered.bam")
+# New suffix: "sorted_by_position_uniq_filtered.bam"
+new_names = str_replace(to_sort_list, "name", "position")
+
+#Checks length of BAM files to ensure all has run properly:
+length(to_sort_list)
+
+#Displays BAM list as another check for errors:
+to_sort_list
+
+for(i in 1:length(to_sort_list)){
+  cmd4 = sprintf("samtools sort %s/%s -o %s/%s", workingDirectory, to_sort_list[i], 
+                 workingDirectory, new_names[i])
+  system(cmd4)
+}
+```
+
+
+### Defining simMixControl() function:
 
 ```{r}
 library(stringr)
@@ -110,8 +154,7 @@ library(stringr)
 simMixControl = function(sim = FALSE, workingDirectory = workingDirectory,
                          picard.jar.Dir = "/home/hheiling_unc_edu",
                          # inFiles: names of "pure" cell type files to sample from to create mixtures
-                         inFiles = c("mm9_set1_sorted_by_name_uniq_filtered.bam",
-                                     "mm9_set2_sorted_by_name_uniq_filtered.bam"),
+                         inFiles = list.files(path = workingDirectory, pattern = "sort_by_position_uniq_filtered.bam"),
                          cellTypes = c("set1","set2"),
                          prop.mat = matrix(c(seq(from = 10, to = 90, by = 10), seq(from = 90, to = 10, by = -10)), byrow = F, ncol = 2),
                          seeds = NULL,
@@ -164,17 +207,26 @@ simMixControl = function(sim = FALSE, workingDirectory = workingDirectory,
 
 }
 
+
+```
+
+### Enter your desired arguments
+
+If use default parameters, argument `sim` = `FALSE` and no simulations will be performed
+
+```{r}
 # Enter your desired arguments
 specifications = simMixControl()
 
-# would need to output mixture file names for Step 03
+# specifications = simMixControl(sim = T, prop.mat = matrix(c(50,50), nrow = 1))
 ```
 
 
 ### Run Step 02
 
+To run Step 02, uncomment the code below and run
+
 ```{r}
-# specifications = simMixControl(sim = T, prop.mat = matrix(c(50,50), nrow = 1))
 # source("%s/Step_02_downsample.R", fileDirectory)
 ```
 
@@ -183,13 +235,31 @@ specifications = simMixControl()
 
 ### Description:
 
+Counts the number of RNA-seq read fragments per exon set given in the processed .bam files (from end of Step 01 and possibly from end of Step 02). These counts are output into files ending with the suffix "_count.txt", which should  have 2 columns for "count" and "exons", without header. 
+For example:
+\verb{
+    110 ENSMUSG00000000001:1;
+     16 ENSMUSG00000000001:1;ENSMUSG00000000001:2;
+ } 
+ 
+Additional details about the main function used in Step 03, the isoform::countReads() function, can be found in the isoform vignette.
+
+These "_count.txt" files will be used in the main function of the `IsoDeconvMM` package.
+
 ### NOTES:
 
-`bedFile`: character string of the name of the .bed file (more details about hte nonoverlap.exon part). If not located in the `workingDirectory`, need to provide the full path. 
+`bedFile`: character string of the name of the .bed file recording information of non-overlapping exons, which  has 6 colums: "chr", "start", "end", "exon", "score", and "strand", without header. For example:
+ \verb{
+   chr1    3044314 3044814 ENSMUSG00000090025:1    666     +
+   chr1    3092097 3092206 ENSMUSG00000064842:1    666     +
+ }
+Directions to create this .bed file can be found in the Create_BED_knownIsoforms_Files directory in the GitHub repo hheiling/deconvolution, <https://github.com/hheiling/deconvolution>. This file should be located in the `workingDirectory`
 
-`sim`: logical, were mixture files simulated in Step 02? Default FALSE
+`sim`: logical, were mixture files simulated in Step 02? Default `FALSE`
 
-`mixture_files`: if mixture files were simulated in Step 02, character vector of names of all of the mixture .bam files that were created (located in `workingDirectory`).
+`mixture_files`: if mixture files were simulated in Step 02, character vector of names of all of the mixture .bam files that were created (located in `workingDirectory`). If this argument is unspecified, the countReads process will only be performed on the files that end with the suffix "_sorted_by_name_uniq_filtered.bam", created in Step 01.
+
+Note: Code should be run within the working directory, `workingDirectory`
 
 ### Enter appropriate arguments:
 
@@ -198,7 +268,7 @@ specifications = simMixControl()
 bedFile = "Mus_musculus.NCBIM37.67.nonoverlap.exon.bed"
 
 # Were mixture files simulated in Step 02?
-sim = specifications$sim
+sim = FALSE
 
 if(sim == TRUE){
   mixture_files = list.files(path = workingDirectory, pattern = "^[mf]")
@@ -212,6 +282,7 @@ if(sim == TRUE){
 
 ```{r}
 library(isoform)
+system(sprintf("cd %s", workingDirectory))
 source(sprintf("%s/Step_03_countReads.R", fileDirectory))
 ```
 
@@ -220,33 +291,50 @@ source(sprintf("%s/Step_03_countReads.R", fileDirectory))
 
 ### Description:
 
-### NOTES:
+Creates text files recording the distribution of the fragment lengths associated with the mixture files (created files end in suffix "_fraglens.txt"), which should have 2 columns: "Frequency" and "Length", without header. For example: 
+  \verb{
+	20546 75
+	40465 76
+	37486 77
+	27533 78
+	25344 79
+	}
+	
+These "_fraglens.txt" files will be used in the main function of the `IsoDeconvMM` package.
 
-`cellTypes`: character vector of the desired names of all pure cell types
+### NOTES:
 
 `mixture_files`: character vector of all of the mixture .bam files that were created in either Step 01 or Step 02 (located in `workingDirectory`).
 
 `pure_files`: character vector of all of the pure cell type .bam files that were created in Step 01 (located in `workingDirectory`) 
 
-`mix_labels`: character vector of names you would like to associate with the mixture files (same order as the `mixture_files`). Default is the name of the files minus the "_sorted_by_name_uniq_filtered.bam" suffix (or just the ".bam" suffix in the case when the mixture files were simulated in Step 02).
+`mix_labels`: character vector of names you would like to associate with the mixture files (same order as the `mixture_files`). Default is the name of the files minus the "_sorted_by_name_uniq_filtered.bam" suffix (or just the ".bam" suffix in the case when the mixture files were simulated in Step 02). These should be in the same order as the `mixture_files`.
 
-`pure_labels`: character vector of names you would like to associate with the pure cell type files (same order as the `pure_files`). Default is the name of hte files minus the "_sorted_by_name_uniq_filtered.bam" suffix.
+`pure_labels`: character vector of names you would like to associate with the pure cell type files (same order as the `pure_files`). Default is the name of the files minus the "_sorted_by_name_uniq_filtered.bam" suffix. These should be in the same order as the `pure_files`.
 
-`readLen`: integer value of the read length of the RNAseq experiment
+`readLen`: integer value of the read length of the RNA-seq experiment
 
 ### Enter appropriate arguments:
 
+Optional set-up variables:
+
 ```{r}
-# Enter desired names of pure cell types:
-cellTypes = c("set1","set2")
+bam_files = list.files(path = workingDirectory, pattern = ".bam")
+sorted_files = bam_files[grep("sorted_by_name_uniq_filtered", bam_files)]
+```
+
+Official needed variables:
+
+```{r}
+library(stringr)
 
 # Enter names of mixture .bam files that resulted from Steps 01 or 02 (in workingDirectory)
-mixture_files = list.files(path = workingDirectory, pattern = "^[mf]")
+mixture_files = bam_files[str_detect(bam_files, "^mf")]
 # Alternative (if simulated mixture_files):
 # mixture_files = specifications$mix_labels
 
 # Enter names of pure cell type .bam that resulted from Step 01 (in workingDirectory)
-pure_files = list.files(path = workingDirectory, pattern = "^[mm9]")
+pure_files = sorted_files[str_detect(sorted_files, "^mm9")]
 
 # Enter short-hand names for mixture and pure files 
 if(Step_02_options$sim){
@@ -264,12 +352,11 @@ readLen = 76
 ### Run Step 04
 
 ```{r}
+system(sprintf("cd %s", workingDirectory))
 source(sprintf("%s/Step_04_FragLen.R", fileDirectory))
 ```
 
-
-
-You have now created all of the count files and fragment length files needed for the main function of the IsoDeconvMM package.
+You have now created all of the count files and fragment length files needed for the main function of the `IsoDeconvMM` package.
 
 
 
