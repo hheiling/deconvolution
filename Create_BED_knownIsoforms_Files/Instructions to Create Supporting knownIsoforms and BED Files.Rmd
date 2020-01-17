@@ -54,14 +54,14 @@ NOTE: The current code assumes that Steps 01-02 were run, so as default a deriva
 
 NOTE: The current code assumes all directory paths utilize forward slashes, `/`. If this is not the case in your environment, you will need to edit the `sprintf()` statements in this document as well as in the sourced code scripts.
 
-* `scriptDir`: character string of the directory where the "Create_Supporting_Files/" scripts are located
+* `scriptDir`: character string of the directory where the "Create_BED_knownIsoforms_Files/" scripts are located
 
 ```{r}
 annoVersion = "Mus_musculus.NCBIM37.67"
 
 directory = "~/research/data/mouse/" 
 
-scriptDir =  "C:/Users/hheiling/Documents/GitHub/deconvolution/Create_Supporting_Files"
+scriptDir =  "C:/Users/hheiling/Documents/GitHub/deconvolution/Create_BED_knownIsoforms_Files"
 
 ff  = sprintf("%s.exon.gtf", annoVersion)
 ```
