@@ -36,7 +36,7 @@ Begin by downloading the GTF file (file ending with extension .gtf) associated w
 
 ## Step 01 Updated Ensembl gtf and Step 02 Get Ensembl Exon GTF
 
-These perl files are only needed if the chromosome names don't start with 'chr' (chromosome ID must start with chr). If necessary, please run the scripts "step1_update_ensembl_gtf.pl" and "step2_get_ensembl_exon_gtf.pl" in perl. Before running the scripts, you will need to manually change the name of the reference GTF file inside of the perl script.
+These perl files are only needed if the chromosome names don't start with 'chr' (chromosome ID must start with 'chr'). If necessary, please run the scripts "step1_update_ensembl_gtf.pl" and "step2_get_ensembl_exon_gtf.pl" in perl. Before running the scripts, you will need to manually change the name of the reference GTF file inside of the perl script.
 
 If these scripts are run, the code creates GTF files with extensions '.exon.gtf'. 
 
@@ -46,7 +46,7 @@ Using the '.exon.gtf' GTF file from Steps 01-02 (or the original .gtf file if St
 
 ### NOTES:
 
-* `annoVersion`: character string of the prefix of the .gtf file of interest.
+* `annoVersion`: character string of the prefix of the .gtf file of interest (i.e. the name of .gtf file minus the .gtf extension).
 
 * `directory`: character string of the directory where the .gtf file of interest is located and where all derivative .gtf files and .RData objects will be created. 
 
@@ -68,7 +68,7 @@ ff  = sprintf("%s.exon.gtf", annoVersion)
 
 ### Run Step 03
 
-Running the sourced code will create a 'sprintf("%s.unique.exon.gtf", annoVersion)' .gtf file to the `directory` specified above. 
+Running the sourced code will create a .gtf file with the suffix '.unique.exon.gtf' (with the same name as `annoVersion`) in the `directory` specified above. 
 
 ```{r}
 source(sprintf("%s/step3_ensemble_unique_exons.R", scriptDir))
@@ -76,14 +76,18 @@ source(sprintf("%s/step3_ensemble_unique_exons.R", scriptDir))
 
 ## Step 04 Ensembl Nonoverlap Exons
 
-Creates the PNG files "ensembl_gaps_unique_exons.png" and "ensembl_gaps_nonoverlap_exons.png" in the `figureDir` folder (specified below), some histograms, and a new .gtf file ending in suffix '.nonoverlap.exon.gtf' ('sprintf("%s.nonoverlap.exon.gtf", annoVersion)') in the `directory` folder
+Creates the PNG files "ensembl_gaps_unique_exons.png" and "ensembl_gaps_nonoverlap_exons.png" in the `figureDir` folder (specified below), some histograms, and a new .gtf file ending in suffix '.nonoverlap.exon.gtf' in the `directory` folder.
 
 ### NOTES:
 
-* `figureDir`: character string of the directory where the user would like the output PNG files to be directed.
+* `figureDir`: character string of the directory where the user would like the output PNG files to be directed. If left as `NULL`, set to original `directory`
 
 ```{r}
 figureDir = "~/research/data/mouse/figures"
+
+if(is.null(figureDir)){
+  figureDir = directory
+}
 ```
 
 
@@ -96,9 +100,11 @@ source(sprintf("%s/step4_ensembl_nonoverlap_exons.R", scriptDir))
 
 ## Step 05 Ensembl Nonoverlap Exons BED
 
-Creates the BED file with suffix 'nonoverlap.exon.bed' ('sprintf("%s.nonoverlap.exon.bed", annoVersion)') in the `directory` folder. This BED file will be used in the IsoDeconvMM package for the  `bedFile` argument.
-
-### NOTES:
+Creates the BED file with suffix 'nonoverlap.exon.bed' in the `directory` folder. This BED file will be used in the IsoDeconvMM package for the  `bedFile` argument. This .bed file records information of non-overlapping exons and  has 6 colums: "chr", "start", "end", "exon", "score", and "strand", without header. For example:
+ \verb{
+   chr1    3044314 3044814 ENSMUSG00000090025:1    666     +
+   chr1    3092097 3092206 ENSMUSG00000064842:1    666     +
+ }
 
 ### Run Step 05
 
@@ -109,11 +115,26 @@ source(sprintf("%s/step5_ensembl_nonoverlap_exons_bed.R", scriptDir))
 
 ## Step 06 Load Known Isoform
 
-Creates the knownIsoforms .RData object ('sprintf("%s.nonoverlap.exon.knownIsoforms.RData", annoVersion)'). When loaded, the object will be named `isoAll`. This knownIsoforms RData object will be used in the IsoDeconvMM package for the `knownIsoforms` argument.
+Creates the knownIsoforms .RData object with suffix '.nonoverlap.exon.knownIsoforms.RData'. This knownIsoforms RData object will be used in the IsoDeconvMM package for the `knownIsoforms` argument.
+
+This .RData object contains the known isoform information. When loaded, this object is a list (named `isoAll`) where each component is a binary matrix that specifies a set of possible isoforms (e.g., isoforms from annotations). Specifically, it is a binary matrix of k rows and m columns, where k is the number of non-overlapping exons and m is the number of isoforms. isoforms[i,j]=1 
+indicates that the i-th exon belongs to the j-th isoform. For example, 
+the following matrix indicates the three isoforms for one gene ENSMUSG00000000003:
+\verb{
+    ENSMUST00000000003 ENSMUST00000166366 ENSMUST00000114041
+[1,]                  1                  1                  1
+[2,]                  1                  1                  1
+[3,]                  1                  1                  1
+[4,]                  1                  1                  0
+[5,]                  1                  1                  1
+[6,]                  1                  1                  1
+[7,]                  1                  1                  1
+[8,]                  1                  0                  0
+}
 
 ### NOTES:
 
-You will need to load the `isoform` package (mentioned in Needed Libraries section) in order to run the `knownIsoforms()` function.
+You will need to load the `isoform` package (mentioned in Needed Libraries section) in order to run the `knownIsoforms()` function. For more information about the `knownIsoforms()` function, please see the `isoform` package documentation.
 
 ### Run Step 06
 
@@ -127,6 +148,8 @@ source(sprintf("%s/step6_load_known_isoform.R", scriptDir))
 Creates the nTE.RData object and deposits it in the `directory` folder. When loaded, this object will be a data.frame named `nTE` with the following columns: geneId (ensembl name of gene), nE (number of exons), nT (number of transcripts), clustID (name of the cluster ID)
 
 ### NOTES:
+
+`ref`: name of the .gtf file used in Step 03.
 
 As in Step 03, if Steps 01-02 were NOT run and a derivative .gtf function with suffix '.exon.gtf' was NOT created, you will need to edit the `ref` input argument below by updating the `sprintf()` statement. However, if Steps 01-02 were run, there is no need to edit the code. 
 
