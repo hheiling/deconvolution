@@ -141,4 +141,12 @@ Based on the exon set counts information from the mm9 simulated example, the cou
 
 Using the negative binomial mean and theta parameters, simulate exon set counts.
 
+# Simulate Fragment Length Distribution Files
+
+1. Once all of the exon set counts have been simulated, sum up all counts to get the total counts for the sample, `total_cts`. 
+
+2. Simulate `total_cts` lengths from a truncated normal distribution (mean 300, sd 50) truncated below at 150. 
+
+3. Round all outputs from Step 2 to the nearest integer and tablulate the number of fragments simulated at each length. 
+
 The End
