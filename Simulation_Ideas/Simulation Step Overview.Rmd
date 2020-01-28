@@ -1,0 +1,144 @@
+---
+title: "Simulation Process and Needed Materials"
+author: "Hillary Heiling"
+date: "January 23, 2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Overview of Document
+
+This document describes all of the necessary steps needed to simulate counts data for an IsoDeconvMM simulation, and states what information/materials would be needed for each step.
+
+# Find Exon Sets for all Isoforms
+
+Materials needed:
+
+* knownIsoforms .RData object relating the isoforms within each transcript cluster to the exons within the isoforms
+* Information that connects each isoform to its gene ID. Possibility: nTE .RData object relates the cluster ID to its gene ID, but some clusters may have more than one gene associated with it. If so, additional informtaion may be needed.
+
+Load objects of interest:
+
+```{r}
+setwd("C:/Users/hheiling/Documents/GitHub/deconvolution")
+
+# load the isoAll object:
+load("test_process/test_materials/Mus_musculus.NCBIM37.67.nonoverlap.exon.knownIsoforms.RData")
+
+# load the nTE object:
+load("test_process/test_materials/Mus_musculus.NCBIM37.67.nTE.RData")
+
+# load info matrix information from the final_geneMod object in "Step 1" output from IsoDeconvMM procedure
+# Load the final_geneMod object from Step 1
+load("test_process/test_materials/Step1_final_geneMod.RData")
+
+```
+
+Output of knownIsoforms and nTE:
+
+```{r}
+head(isoAll$chr1_1)
+
+head(nTE)
+```
+
+It would be nice to have information like the following, which was composed in the loadData_djEdit() function in Step 1 of the IsoDeconvMM package (BED file is used to create this data.frame). This information directly relates the exons within each cluster to a particular gene, so there is no confusion if multiple genes are associated with one cluster.
+
+```{r}
+final_geneMod[[1]]$chr1_1$info
+```
+
+I'll need to take a closer look at the loadData_djEdit function to see how it could be modified to just output this information matrix for each cluster
+
+## What to do with information
+
+Ideally want to compose names of exons sets in the format given to count files output from the countReads function.
+
+```{r}
+# Load example output of countReads 
+prefix = "C:/Users/hheiling/Documents/GitHub/deconvolution/test_process/test_materials"
+counts_set1 = read.table(sprintf("%s/mm9_set1_counts.txt", prefix), as.is = T)
+
+head(counts_set1,10)
+```
+
+Want to create strings like the strings present in the second column:
+
+clust_name|geneID|exon_number;
+
+General procedure:
+
+1. For each cluster, number all of the exons (in knownIsoforms matrix)
+
+2. For each isoform, find which exons are present in the isoform (from the knownIsoforms matrix)
+
+3. For each isoform, using the exon information from step 2, create string names for all exon sets with a single exon in the set: concatenate the cluster name, the gene ID (from nTE information and/or some other information) and exon number as described above. Store in a vector.
+
+4. Using the single exon set information from Step 3, concatenate appropriate strings to create the double exon set information. Store in a vector.
+
+?? Question: Can I assume in step 4 that all of exons will always be in order within the isoform? For example, if there are 3 exons for an isoform, say exons 2, 3, and 5, then the only possible double exon sets will be 2:3 and 3:5? In other words, I shouldn't worry about the possible exon set 2:5? Similarly for the triple exon sets, there will only be the set 2:3:5 to worry about?
+
+5. Using the single exon set infomation from Step 3, concatenate appropriate strings to create the triple exon set information. Store in a vector.
+
+Note:
+
+Based on the exon set counts information from the mm9 simulated example, the counts are distributed as follows:
+
+* Approximately 67.5% to 68.5% of total counts went to exon sets with a single exon in the set
+* Approximately 27.5% to 28% of total counts went to exon sets with two exons in the set
+* Approximately 3.5% of total counts went to exon sets with three exons in the set
+* Approximately 0.5% of total counts went to exon sets with four or more exons in the set
+
+Therefore, I think it is safe for our simulation just to consider single, double, and triple exon sets. 
+
+# Simulate Negative Binomial Parameters for Exon Sets
+
+## Total Reads to Gene Cluster Parameters
+
+1. Specify total read counts for a sample (say, 20 million total reads)
+
+2. Specify a Dirichlet distribution associated with all of the genes / transcript clusters (say, 1000) within a sample. For one ``reference'' cell type, could just use a 'flat' Dirichlet distribution ($\alpha = 1$ for all genes). Alternatively, could do some Googling to see what are some realistic options.
+
+3. Sample a probability vector from the Dirichlet distribution in Step 2. 
+
+4. Multiply the probabililiy associated with each cluster to the total number of reads to get the negative binomial mean parameter for each cluster
+
+As a result of this step, we should have the negative binomial mean parameters for each gene cluster.
+
+## Gene Cluster to Isoform Parameters
+
+1. For each gene / transcript cluster, specify a Dirichlet distriubtion associated with the isoforms for the cluster
+
+2. Sample a probability vector from the Dirichlet distribution in Step 1
+
+3. Multiply the probability associated with each isoform to the negative binomial mean parameter for the cluster to get the negative binomial mean for each isoform
+
+As a result of this step, we should have the negative binomial mean parameters for each isoform within a cluster
+
+# Isoform to Exon Set Parameters
+
+Based on the exon set counts information from the mm9 simulated example, the counts are distributed as follows:
+
+* Approximately 67.5% to 68.5% of total counts went to exon sets with a single exon in the set
+* Approximately 27.5% to 28% of total counts went to exon sets with two exons in the set
+* Approximately 3.5% of total counts went to exon sets with three exons in the set
+* Approximately 0.5% of total counts went to exon sets with four or more exons in the set
+
+1. Multiply (0.685, 0.280, 0.035) times the negative binomial mean parameter for the isoform to get the negative binomial mean parameters for single, double, and triple exon sets
+
+2. Within the single, double, and triple exon sets, respectively, specify a Dirichlet distribution for all of the exon sets within the single/double/triple designations
+
+3. Simulate probability vectors from the Dirichlet distributions in Step 2
+
+4. Multiply the probability vectors by the negative binomial mean parameters from Step 1 to get the negative binomial mean parameters for each exon set
+
+5. Randomly generate dispersion parameter values for each exon set. When I simulated additional pure cell type count information in the toy mm9 example, most of the theta parameters were in the range (0.15, 0.3) for the parameterization $ Var(X) = \mu + \frac{1}{\theta}\mu^2 $
+
+# Simulate Exon Set Counts
+
+Using the negative binomial mean and theta parameters, simulate exon set counts.
+
+The End
