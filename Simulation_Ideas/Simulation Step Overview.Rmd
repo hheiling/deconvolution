@@ -134,9 +134,19 @@ Based on the exon set counts information from the mm9 simulated example, the cou
 
 5. Randomly generate dispersion parameter values for each exon set. When I simulated additional pure cell type count information in the toy mm9 example, most of the theta parameters were in the range (0.15, 0.3) for the parameterization $ Var(X) = \mu + \frac{1}{\theta}\mu^2 $
 
+Note: Found the paper "Polyester: simulating RNA-seq datasets with differential transcript expression" by Frazee et al., which gives details about their package polyester. The default dispersion parameter set-up for the isoform transcripts was $ \theta = \frac{\mu}{3} $ such that $ Var(X) = 4\mu $. We could employ something similar in the above Step 5.
+
+Additional note: 
+
+The polyester package mentioned above outputs a FASTA file, which would require additional work on our part to convert this data into counts data. It does, however, allow for the simulation of sequencing reads with differential expression signal for either genes or isoforms. 
+
+The package polyester may be something to consider because one of the purposes of the package was to create simulated reads with realistic properties. Having simulated data with realistic properties could help our case when we use these simulations in the paper. 
+
 # Simulate Exon Set Counts
 
-Using the negative binomial mean and theta parameters, simulate exon set counts.
+Using the negative binomial mean and theta parameters, simulate exon set counts. 
+
+There will eventually be 3 sets of parameters if we decide on 3 cell types for the simulation. For each set of parameters (i.e. each cell type), simulate 5 (or more) reference samples for the cell type.
 
 # Simulate Fragment Length Distribution Files
 
@@ -145,5 +155,40 @@ Using the negative binomial mean and theta parameters, simulate exon set counts.
 2. Simulate `total_cts` lengths from a truncated normal distribution (mean 300, sd 50) truncated below at 150. 
 
 3. Round all outputs from Step 2 to the nearest integer and tablulate the number of fragments simulated at each length. 
+
+# Multiple Cell Types to Consider
+
+This section might depend on how close we want these simulations to match "realistic" examples. Also, more specifics need to be determined. For now, the general idea:
+
+Suppose, for now, that we assign a "reference" cell type, CT1, to have all of its dirichlet distributions be flat ($\alpha = 1$, uniform over all points in its support) for all of the relevant steps. Therefore, the mean parameters would be approximately equal for all genes / clusters, all isoforms within each gene / cluster, and all exon sets within each of the single, double, and triple exon sets, respectively. 
+
+Suppose that we also want to eventually have 3 cell types. We need to simulate negative binomial parameters for CT2 and CT3. 
+
+Differences between cell types to consider:
+
+* Differential isoform expression
+* Differential isoform usage
+
+This is what the polyester packae does (in general terms):
+
+1. From the "reference" distribution, draw J counts from this distribution (J = total number of samples of interst) for each transcript.
+
+2. Create a fold change matrix, N rows x J columns (rows = transcripts in the polyester package)
+
+3. Multiply each count by the appropriate fold change value in the fold change matrix from Step 2
+
+What we could do:
+
+* In the section "Total Reads to Gene Cluster Parameters" above, save a record of the mean parameters
+
+* Create a N x J fold change matrix (N = genes / clusters, J = total cell types used in simulation minus one (3 - 1 = 2)). If leave some fold change values = 1, then no differential expression for those genes / clusters
+
+* Between the steps of "Total Reads to Gene Cluster Parameters" and "Gene Cluster to Isoform Parameters", multiply each of the N negative binomial mean parameters by the fold change values in the matrix. Use these new mean parameters in later downstream manipulations for each additional cell type.
+
+* In the "Gene Cluster to Isoform Parameters" section, change the specifications of some of the Dirichlet distributions so that the usage differs for some isoforms. 
+
+# Simulate Mixture Sample Counts
+
+
 
 The End
