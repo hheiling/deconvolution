@@ -23,17 +23,15 @@ Materials needed:
 Load objects of interest:
 
 ```{r}
-setwd("C:/Users/hheiling/Documents/GitHub/deconvolution")
-
 # load the isoAll object:
-load("test_process/test_materials/Mus_musculus.NCBIM37.67.nonoverlap.exon.knownIsoforms.RData")
+load("Mouse_Materials/Mus_musculus.NCBIM37.67.nonoverlap.exon.knownIsoforms.RData")
 
 # load the nTE object:
-load("test_process/test_materials/Mus_musculus.NCBIM37.67.nTE.RData")
+load("Mouse_Materials/Mus_musculus.NCBIM37.67.nTE.RData")
 
 # load info matrix information from the final_geneMod object in "Step 1" output from IsoDeconvMM procedure
 # Load the final_geneMod object from Step 1
-load("test_process/test_materials/Step1_final_geneMod.RData")
+load("Mouse_Materials/Step1_final_geneMod.RData")
 
 ```
 
@@ -59,8 +57,7 @@ Ideally want to compose names of exons sets in the format given to count files o
 
 ```{r}
 # Load example output of countReads 
-prefix = "C:/Users/hheiling/Documents/GitHub/deconvolution/test_process/test_materials"
-counts_set1 = read.table(sprintf("%s/mm9_set1_counts.txt", prefix), as.is = T)
+counts_set1 = read.table(sprintf("Mouse_Materials/mm9_set1_counts.txt", prefix), as.is = T)
 
 head(counts_set1,10)
 ```
