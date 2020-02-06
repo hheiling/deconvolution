@@ -13,6 +13,18 @@ knitr::opts_chunk$set(echo = TRUE)
 
 This document describes all of the necessary steps needed to simulate counts data for an IsoDeconvMM simulation, and states what information/materials would be needed for each step.
 
+# Simulate Fragment Length Distribution Files
+
+In the "order of operations", this step comes first.
+
+1. Once all of the exon set counts have been simulated, sum up all counts to get the total counts for the sample, `total_cts`. 
+
+2. Simulate `total_cts` lengths from a truncated normal distribution (mean 300, sd 50) truncated below at 150. 
+
+3. Round all outputs from Step 2 to the nearest integer and tablulate the number of fragments simulated at each length. 
+
+From this information, calculate the effective length design matrix.
+
 # Find Exon Sets for all Isoforms
 
 Materials needed:
@@ -43,13 +55,7 @@ head(isoAll$chr1_1)
 head(nTE)
 ```
 
-It would be nice to have information like the following, which was composed in the loadData_djEdit() function in Step 1 of the IsoDeconvMM package (BED file is used to create this data.frame). This information directly relates the exons within each cluster to a particular gene, so there is no confusion if multiple genes are associated with one cluster.
-
-```{r}
-final_geneMod[[1]]$chr1_1$info
-```
-
-I'll need to take a closer look at the loadData_djEdit function to see how it could be modified to just output this information matrix for each cluster
+In order to avoid problems mapping a particular gene ID to an exon within a cluster because there are multiple genes per cluster, we will filter the clusters to only consider those clusters containing a single gene. 
 
 ## What to do with information
 
@@ -57,7 +63,7 @@ Ideally want to compose names of exons sets in the format given to count files o
 
 ```{r}
 # Load example output of countReads 
-counts_set1 = read.table(sprintf("Mouse_Materials/mm9_set1_counts.txt", prefix), as.is = T)
+counts_set1 = read.table(sprintf("Mouse_Materials/mm9_set1_counts.txt"), as.is = T)
 
 head(counts_set1,10)
 ```
@@ -76,7 +82,7 @@ General procedure:
 
 4. Using the single exon set information from Step 3, concatenate appropriate strings to create the double exon set information. Store in a vector.
 
-?? Question: Can I assume in step 4 that all of exons will always be in order within the isoform? For example, if there are 3 exons for an isoform, say exons 2, 3, and 5, then the only possible double exon sets will be 2:3 and 3:5? In other words, I shouldn't worry about the possible exon set 2:5? Similarly for the triple exon sets, there will only be the set 2:3:5 to worry about?
+Note: In order to determine which sets of exon combinations should be considered for possible exon sets, first need to determine effective lengths from fragment length distribution. 
 
 5. Using the single exon set infomation from Step 3, concatenate appropriate strings to create the triple exon set information. Store in a vector.
 
@@ -93,21 +99,23 @@ Therefore, I think it is safe for our simulation just to consider single, double
 
 # Simulate Negative Binomial Parameters for Exon Sets
 
-## Total Reads to Gene Cluster Parameters
+## Total Reads to Gene Parameters
 
 1. Specify total read counts for a sample (say, 20 million total reads)
 
-2. Specify a Dirichlet distribution associated with all of the genes / transcript clusters (say, 1000) within a sample. For one ``reference'' cell type, could just use a 'flat' Dirichlet distribution ($\alpha = 1$ for all genes). Alternatively, could do some Googling to see what are some realistic options.
+2. Specify a Dirichlet distribution associated with all of the genes (say, 1000) within a sample. For one ``reference'' cell type, could just use a 'flat' Dirichlet distribution ($\alpha = 1$ for all genes). Alternatively, could model the Dirichlet to reflect what occurs in the UCLA data.
 
 3. Sample a probability vector from the Dirichlet distribution in Step 2. 
 
-4. Multiply the probabililiy associated with each cluster to the total number of reads to get the negative binomial mean parameter for each cluster
+4. Plug the probability vector from Step 3 into a multinomial distribution, and sample `n` = total read counts from this distribution. Do this `r` times, where `r` = number of reference samples per cell type. This will add additional biological variability between the pure cell type samples. Consider these count values to be the mean parameters for each gene. 
 
-As a result of this step, we should have the negative binomial mean parameters for each gene cluster.
+5. Assign a constant dispersion parameter value for all genes. 
+
+As a result of this step, we should have the negative binomial mean parameters for each gene cluster and a constant dispersion parameter for all genes.
 
 ## Gene Cluster to Isoform Parameters
 
-1. For each gene / transcript cluster, specify a Dirichlet distriubtion associated with the isoforms for the cluster
+1. For each gene, specify a Dirichlet distriubtion associated with the isoforms for the cluster
 
 2. Sample a probability vector from the Dirichlet distribution in Step 1
 
@@ -115,7 +123,31 @@ As a result of this step, we should have the negative binomial mean parameters f
 
 As a result of this step, we should have the negative binomial mean parameters for each isoform within a cluster
 
-# Isoform to Exon Set Parameters
+## Isoform to Exon Set Parameters
+
+### Available Materials and Known Models
+
+From earlier, we have created the effective length design matrix, $X_g = (x_{g1}, ..., x_{gI})$, for each gene cluster $g$. The columns of this design matrix correspond to the I isoforms for the gene cluster, and the rows correspond to the possible E exon sets for the gene cluster. We have also determined the negative binomial mean parameters for the gene cluster and each isoform within the gene cluster $g$. 
+
+For each gene, let $\mu_g$ be a vector of means corresponding to all exon sets, $\mu_g = (\mu_{g1}, ..., \mu_{gE})^T$. This vector of means is characterized by $\mu_g = X_g \beta_g$ where $\beta_g = (\beta_{g1}, ..., \beta_{gI})^T$ and each $\beta_{gi}$ is proportional to the transcript abundance of isoform $i$. 
+
+### Relationships:
+
+The sum of the E elements of the vector $\mu_g$ should equal the negative binomial mean parameter for the gene cluster. 
+
+$(\sum_{e=1}^E x_{ge})\beta_{gi}$ should equal the negative binomial mean parameter for each isoform $i$ within the gene cluster ($\mu_{gi}$). 
+
+$\sum_{i=1}^I \mu_{gi}$ should also equal the negative binomial mean paramter for the gene cluster. This will be true as long as we simulate isoform negative binomial parameters as described in the "Gene Cluster to Isoform Parameters" section. 
+
+### Details to Simulate Exon Set Counts
+
+1. If we simulate isoform negative binomial parameters as described in the "Gene Cluster to Isoform Parameters" section, we can calculate the $\beta_g$ parameters by taking each isoform mean parameter and dividing by the sum of the corresponding column in the $X_g$ effective length design matrix.
+
+2. Perform the matrix multiplication $X_g \beta_g$ to get the vector $\mu_g$. Each element of this vector will be the negative binomial mean parameter for each possible exon set. 
+
+3. Using the negative binomial mean parameters from Step 2 and the constant $\theta$ parameter determined earlier, simulate exon set counts. 
+
+### Potentially other useful information
 
 Based on the exon set counts information from the mm9 simulated example, the counts are distributed as follows:
 
@@ -124,43 +156,11 @@ Based on the exon set counts information from the mm9 simulated example, the cou
 * Approximately 3.5% of total counts went to exon sets with three exons in the set
 * Approximately 0.5% of total counts went to exon sets with four or more exons in the set
 
-1. Multiply (0.685, 0.280, 0.035) times the negative binomial mean parameter for the isoform to get the negative binomial mean parameters for single, double, and triple exon sets
-
-2. Within the single, double, and triple exon sets, respectively, specify a Dirichlet distribution for all of the exon sets within the single/double/triple designations
-
-3. Simulate probability vectors from the Dirichlet distributions in Step 2
-
-4. Multiply the probability vectors by the negative binomial mean parameters from Step 1 to get the negative binomial mean parameters for each exon set
-
-5. Randomly generate dispersion parameter values for each exon set. When I simulated additional pure cell type count information in the toy mm9 example, most of the theta parameters were in the range (0.15, 0.3) for the parameterization $ Var(X) = \mu + \frac{1}{\theta}\mu^2 $
-
-Note: Found the paper "Polyester: simulating RNA-seq datasets with differential transcript expression" by Frazee et al., which gives details about their package polyester. The default dispersion parameter set-up for the isoform transcripts was $ \theta = \frac{\mu}{3} $ such that $ Var(X) = 4\mu $. We could employ something similar in the above Step 5.
-
-Additional note: 
-
-The polyester package mentioned above outputs a FASTA file, which would require additional work on our part to convert this data into counts data. It does, however, allow for the simulation of sequencing reads with differential expression signal for either genes or isoforms. 
-
-The package polyester may be something to consider because one of the purposes of the package was to create simulated reads with realistic properties. Having simulated data with realistic properties could help our case when we use these simulations in the paper. 
-
-# Simulate Exon Set Counts
-
-Using the negative binomial mean and theta parameters, simulate exon set counts. 
-
-There will eventually be 3 sets of parameters if we decide on 3 cell types for the simulation. For each set of parameters (i.e. each cell type), simulate 5 (or more) reference samples for the cell type.
-
-# Simulate Fragment Length Distribution Files
-
-1. Once all of the exon set counts have been simulated, sum up all counts to get the total counts for the sample, `total_cts`. 
-
-2. Simulate `total_cts` lengths from a truncated normal distribution (mean 300, sd 50) truncated below at 150. 
-
-3. Round all outputs from Step 2 to the nearest integer and tablulate the number of fragments simulated at each length. 
-
 # Multiple Cell Types to Consider
 
-This section might depend on how close we want these simulations to match "realistic" examples. Also, more specifics need to be determined. For now, the general idea:
+More specific details for this section are still needed. For now, the general idea:
 
-Suppose, for now, that we assign a "reference" cell type, CT1, to have all of its dirichlet distributions be flat ($\alpha = 1$, uniform over all points in its support) for all of the relevant steps. Therefore, the mean parameters would be approximately equal for all genes / clusters, all isoforms within each gene / cluster, and all exon sets within each of the single, double, and triple exon sets, respectively. 
+Suppose, for now, that we assign a "reference" cell type, CT1, such that the dirichlet distributions for all of the relevant steps follow the UCLA data distributions for all of the relevant steps.  
 
 Suppose that we also want to eventually have 3 cell types. We need to simulate negative binomial parameters for CT2 and CT3. 
 
@@ -168,6 +168,38 @@ Differences between cell types to consider:
 
 * Differential isoform expression
 * Differential isoform usage
+
+Assume we choose 1000 genes. Of the 1000 genes, specify 100 to have differential isoform expression across cell types and 100 to have differential isoform usage across cell types
+
+## Differential isoform expression
+
+1. Create a fold change matrix of size NxJ, where N = number of genes (1000) and J = number of cell types. The column corresponding to the "reference" cell type 1 (CT1) will be, by default, all equal to 1. The other columns will have about 900 entries equal to 1 and the other 100 not equal to 1. (These factors are on the multiplicative scale). 
+
+Note: The 100 entries != 1 should balance out in some way so that the total overall expression doesn't significantly change. In general terms, give some genes higher expression and some lower expression compared to the reference cell type. 
+
+2. After the negative binomial mean parameters have been determined for each gene as described in the section "Total Reads to Gene Cluster Parameters", multiply these mean parameter values by the appropriate column of the NxJ fold change matrix. 
+
+3. Intermediate step to balance total gene expression? (See below)
+
+4. Proceed as typical for the rest of the process to get exon set counts as described above. 
+
+### Ideas to balance the fold changes such that total expression is still similar:
+
+Goal: To have the total proportion of gene expression for the 100 genes assigned differential expression to have the same proportion of gene expression relative to the total number of reads in both reference CT1 and new CTj. 
+
+A. In reference cell type, calculate the gene expression proportion for the genes of interest by summing the negative binomial mean parameters for the genes and dividing by the total number of reads. 
+
+B. Repeat Step A in the new cell type j (CTj).
+
+C. Take the ratio of the proportions (proportion A / proportion B) and multiply this ratio by all of the negative binomial mean parameters in CTj. 
+
+## Differential isoform usage
+
+For the 100 genes designated to have a different isoform usage, perform the following:
+
+In Step 1 of the section "Gene Cluster to Isoform Parameters", specify a different Dirichlet distribution to sample from. Otherwise, continue as normal. 
+
+## Polyester package procedure (for inspiration, if needed)
 
 This is what the polyester packae does (in general terms):
 
@@ -177,18 +209,40 @@ This is what the polyester packae does (in general terms):
 
 3. Multiply each count by the appropriate fold change value in the fold change matrix from Step 2
 
-What we could do:
-
-* In the section "Total Reads to Gene Cluster Parameters" above, save a record of the mean parameters
-
-* Create a N x J fold change matrix (N = genes / clusters, J = total cell types used in simulation minus one (3 - 1 = 2)). If leave some fold change values = 1, then no differential expression for those genes / clusters
-
-* Between the steps of "Total Reads to Gene Cluster Parameters" and "Gene Cluster to Isoform Parameters", multiply each of the N negative binomial mean parameters by the fold change values in the matrix. Use these new mean parameters in later downstream manipulations for each additional cell type.
-
-* In the "Gene Cluster to Isoform Parameters" section, change the specifications of some of the Dirichlet distributions so that the usage differs for some isoforms. 
-
 # Simulate Mixture Sample Counts
 
+Could combine counts or sample from a mixture distribution ($p_1\mu_1 + ... + p_I\mu_i$)
 
+Potential way to combine counts:
+
+1. For each mixture sample, specify a probability vector (i.e. c(0.3, 0.3, 0.4), c(0.1, 0.5, 0.4) ...) where each element of the probability vector is associated with one of the pure cell types.
+
+2. Multiply all counts (recall: all counts recorded by exon set) calculated for one of the pure cell type samples by the probability associated with that cell type. Do for all cell types. Round these new counts to the nearest integer.
+
+3. Add all of the counts from step 2 together by exon set.
+
+# UCLA Data Summary
+
+Load summary data
+
+```{r}
+eDat = readRDS("Human_Materials/ucla_eDat.rds")
+cDat = readRDS("Human_Materials/ucla_cDat.rds")
+```
+
+eDat exploration
+
+```{r}
+dim(eDat)
+head(rownames(eDat),20)
+colnames(eDat)
+eDat[1:5, 1:5]
+```
+
+cDat exploration
+
+```{r}
+
+```
 
 The End
