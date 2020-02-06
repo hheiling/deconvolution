@@ -107,41 +107,45 @@ Therefore, I think it is safe for our simulation just to consider single, double
 
 3. Sample a probability vector from the Dirichlet distribution in Step 2. 
 
-4. Plug the probability vector from Step 3 into a multinomial distribution, and sample `n` = total read counts from this distribution. Do this `r` times, where `r` = number of reference samples per cell type. This will add additional biological variability between the pure cell type samples. Consider these count values to be the mean parameters for each gene. 
+4. Plug the probability vector from Step 3 into a multinomial distribution, and sample `n` = total read counts from this distribution. Do this `r` times, where `r` = number of reference samples per cell type. This will add additional biological variability between the pure cell type samples. Consider these count values to be the mean parameters for each gene. For each gene $g$, call the resulting fragment read count $T_g$.
 
-5. Assign a constant dispersion parameter value for all genes. 
+5. Assign a constant dispersion parameter value across all genes. Specify the dispersion parameter such that the negative binomial variance is not much different than the variance for a poisson distribution. $Var(G) = \mu_g + \frac{1}{\theta}\mu_g^2$ with $\theta$ some large number, such as 100.
 
-As a result of this step, we should have the negative binomial mean parameters for each gene cluster and a constant dispersion parameter for all genes.
+As a result of this step, we should have the equivalent of the negative binomial mean parameters for each gene cluster and a constant dispersion parameter for all genes.
 
 ## Gene Cluster to Isoform Parameters
 
 1. For each gene, specify a Dirichlet distriubtion associated with the isoforms for the cluster
 
-2. Sample a probability vector from the Dirichlet distribution in Step 1
+2. Sample a probability vector from the Dirichlet distribution in Step 1. Call this probability vector $\rho_g$ for gene $g$.
 
-3. Multiply the probability associated with each isoform to the negative binomial mean parameter for the cluster to get the negative binomial mean for each isoform
-
-As a result of this step, we should have the negative binomial mean parameters for each isoform within a cluster
+As a result of this step, we should have the probability vectors for the distribution of each isoform within a gene cluster.
 
 ## Isoform to Exon Set Parameters
 
 ### Available Materials and Known Models
 
-From earlier, we have created the effective length design matrix, $X_g = (x_{g1}, ..., x_{gI})$, for each gene cluster $g$. The columns of this design matrix correspond to the I isoforms for the gene cluster, and the rows correspond to the possible E exon sets for the gene cluster. We have also determined the negative binomial mean parameters for the gene cluster and each isoform within the gene cluster $g$. 
+From earlier, we have created the ExI effective length design matrix, $X_g = (x_{g1}, ..., x_{gI})$, for each gene cluster $g$. The columns of this design matrix correspond to the I isoforms for the gene cluster, and the rows correspond to the possible E exon sets for the gene cluster. We have also determined the negative binomial mean parameters for the gene cluster and each isoform within the gene cluster $g$. 
 
 For each gene, let $\mu_g$ be a vector of means corresponding to all exon sets, $\mu_g = (\mu_{g1}, ..., \mu_{gE})^T$. This vector of means is characterized by $\mu_g = X_g \beta_g$ where $\beta_g = (\beta_{g1}, ..., \beta_{gI})^T$ and each $\beta_{gi}$ is proportional to the transcript abundance of isoform $i$. 
 
 ### Relationships:
 
-The sum of the E elements of the vector $\mu_g$ should equal the negative binomial mean parameter for the gene cluster. 
+Additional variables:
 
-$(\sum_{e=1}^E x_{ge})\beta_{gi}$ should equal the negative binomial mean parameter for each isoform $i$ within the gene cluster ($\mu_{gi}$). 
+$\rho_g$ = probability vector of isoform proportion within a gene sampled from the Dirichlet dist in "Gene Cluster to Isoform Parameter" section
 
-$\sum_{i=1}^I \mu_{gi}$ should also equal the negative binomial mean paramter for the gene cluster. This will be true as long as we simulate isoform negative binomial parameters as described in the "Gene Cluster to Isoform Parameters" section. 
+$r_g$ = scaling factor
+
+$T_g$ = total fragment count for gene g (simulated in section "Total Reads to Gene Parameters")
+
+$\mu_g = X_g\beta_g = X_g \rho_g r_g$, so $\beta_g = \rho_g r_g$. Need to find $r_g$
+
+$T_g = \sum_e \mu_{ge} = r_g \sum_e (X_g \rho_g) \rightarrow r_g = \frac{T_g}{\sum_e (X_g \rho_g)}$
 
 ### Details to Simulate Exon Set Counts
 
-1. If we simulate isoform negative binomial parameters as described in the "Gene Cluster to Isoform Parameters" section, we can calculate the $\beta_g$ parameters by taking each isoform mean parameter and dividing by the sum of the corresponding column in the $X_g$ effective length design matrix.
+1. If we simulate isoform probability distribution parameters as described in the "Gene Cluster to Isoform Parameters" section, we can calculate the $\beta_g$ parameters by calculating $\r_g = \frac{T_g}{\sum_e (X_g \rho_g)}$ and Then calculating $\beta_g = \rho_g r_g$.
 
 2. Perform the matrix multiplication $X_g \beta_g$ to get the vector $\mu_g$. Each element of this vector will be the negative binomial mean parameter for each possible exon set. 
 
