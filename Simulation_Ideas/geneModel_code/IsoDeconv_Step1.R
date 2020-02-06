@@ -2,8 +2,7 @@
 
 IsoDeconv_Step1 = function(directory = NULL, mix_files, pure_ref_files, fraglens_files,
                            bedFile, knownIsoforms, discrim_genes = NULL, 
-                           readLen, lmax = 600, eLenMin = 1, mix_names = NULL,
-                           optim_options = optimControl()){
+                           readLen, lmax = 600, eLenMin = 1){
   
   #-----------------------------------------------------------------------------#
   # Download all needed files, convert input items to useful formats            #
@@ -99,6 +98,7 @@ IsoDeconv_Step1 = function(directory = NULL, mix_files, pure_ref_files, fraglens
   # geneModel creation problem (after edits, now accommodates multiple cell types)
   # geneModel() altered by:                                                                                                                        
   #    Douglas Roy Wilson, Jr. 
+  # Additional edits: Edited to just give info, candiIsoforms, and X for each cluster
   #--------------------------------------------------------------------------------#
   
   labels = c(labels_pure, "mix")
@@ -129,5 +129,7 @@ IsoDeconv_Step1 = function(directory = NULL, mix_files, pure_ref_files, fraglens
   }
   
   print("Finished creation of gene model")
+  
+  return(final_geneMod)
   
 }

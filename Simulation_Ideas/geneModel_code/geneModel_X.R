@@ -137,6 +137,7 @@ geneModel_X <- function (gene, d, pdDist, isoforms, lmax = length(pdDist),
   # Initialize X matrix to all zeros, one row for each exon set and one column for each isoform.  
   
   X = matrix(0, nrow = length(exons), ncol = ncol(isoforms))
+  rownames(X) = exons
   for (i in 1:length(exons)) {
     #-----------------------------------------------------------------------------    
     # Obtain row vector of exons in i-th exon set and determine number present
@@ -227,14 +228,17 @@ geneModel_X <- function (gene, d, pdDist, isoforms, lmax = length(pdDist),
                     nrow(X), ncol(X)))
   }
   
+  gm = list(info=info, candiIsoform = isoforms, X = X)
+  
   #--------------------------------------------------------------------------------------------------#
-  # OUTPUT VECTOR CREATION                                                                           #
+  # OUTPUT VECTOR CREATION - Cut                                                                     #
   #--------------------------------------------------------------------------------------------------#
   
   # creates output vector y, which is 0 if not found in count file and value find in count file if it
   # is present in the count file.
-  r = 0
-  gm = list(info=info, candiIsoform = isoforms, X = X)
+  # r = 0
+  # gm = list(info=info, candiIsoform = isoforms, X = X)
+  
   # for(j in 1:length(sam_names)){
   #   r = r+1
   #   count = gene[[sam_names[j]]]
@@ -251,5 +255,6 @@ geneModel_X <- function (gene, d, pdDist, isoforms, lmax = length(pdDist),
   #   gm[[y_out]] = y
   #   gm[[cn_out]] = countN
   # }
+  
   gm
 }

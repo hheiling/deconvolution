@@ -1,5 +1,6 @@
 
-dev_compiled_geneMod2 <- function(countData,labels,cellTypes,total_cts,bedFile,knownIsoforms,fragSizeFile,readLen,lmax,eLenMin,discrim_genes){
+dev_compiled_geneMod2 <- function(countData,labels,cellTypes,total_cts,bedFile,knownIsoforms,
+                                  fragSizeFile,readLen,lmax,eLenMin,discrim_genes){
   
   #------------------------------------------------------------------------------------------------------------------------------------#
   # LOADING THE DATA                                                                                                                   #
