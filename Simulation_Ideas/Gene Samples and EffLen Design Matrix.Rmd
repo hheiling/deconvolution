@@ -261,7 +261,8 @@ write.table(freq_dist, file = "Human_Materials/mock_fraglens.txt", col.names = F
 Source code files used to calculate effective length design matrix X:
 
 ```{r, eval=FALSE}
-code_files = c("IsoDeconv_Step1.R","dev_compiled_geneMod2.R","geneModel_X.R")
+code_files = c("IsoDeconv_Step1.R","dev_compiled_geneMod2.R","geneModel_X.R",
+               "EffectiveLength_Total.R")
 for(f in code_files){
   source(sprintf("geneModel_code/%s",f))
 }
