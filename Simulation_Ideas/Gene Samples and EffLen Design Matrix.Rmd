@@ -80,6 +80,8 @@ head(nTE_sim, 20)
 
 # Determining Exon Set Combinations
 
+All possible single, double, and triple exon set combinations
+
 ```{r}
 # Extract exon set information for gene clusters of interest
 
@@ -144,6 +146,74 @@ length(exon_sets$chr1_3$sets)
 
 ```
 
+Only consecutive exon sets (i.e. if isoform has exons 2, 3, 5, and 7, then all double exon sets are {2,3}, {3,5}, {5,7})
+
+```{r}
+# Extract exon set information for gene clusters of interest
+
+exon_sets = list()
+
+for(clust in nTE_sim$clustID){
+  
+  # Extract non-overlapping exon vs isoform matrix
+  candiIsoform = isoAll[[clust]]
+  iso_names = colnames(candiIsoform)
+  # Extract gene information for each cluster
+  gene = nTE_sim[which(nTE_sim$clustID == clust),1]
+  
+  # Total isoforms
+  iso_total = ncol(candiIsoform)
+  
+  sets1 = as.character(NULL)
+  sets2 = as.character(NULL)
+  sets3 = as.character(NULL)
+  
+  for(j in 1:iso_total){
+    # Identify exons that appear in isoform j
+    subset_exons = as.character(which(candiIsoform[,j] == 1))
+    num_exons = length(subset_exons)
+  
+    single_sets = str_c(clust, "|", gene, "|", subset_exons, ";")
+  
+    if(num_exons > 1){
+      double_sets = character(num_exons - 1)
+      for(e in 1:(num_exons - 1)){
+        double_sets[e] = str_c(single_sets[e], single_sets[e+1])
+      }
+    }else{
+      double_sets = NULL
+    }
+    
+    if(num_exons > 2){
+      triple_sets = character(num_exons - 2)
+      for(e in 1:(num_exons - 2)){
+        triple_sets[e] = str_c(single_sets[e], single_sets[e+1], single_sets[e+2])
+      }
+    }else{
+      triple_sets = NULL
+    }
+  
+    sets1 = union(sets1, single_sets)
+    sets2 = union(sets2, double_sets)
+    sets3 = union(sets3, triple_sets)
+  
+  }
+
+  # sets_all = list(single_sets = sets1, double_sets = sets2, triple_sets = sets3)
+  
+  sets_all = c(sets1, sets2, sets3)
+  
+  exon_sets[[clust]] = list(candiIsoform = candiIsoform, sets = sets_all)
+  
+}
+
+# Examine output
+head(exon_sets$chr1_3$sets, 10)
+tail(exon_sets$chr1_3$sets, 10)
+length(exon_sets$chr1_3$sets)
+
+```
+
 # "Mock" count .txt file
 
 Using the exon sets created in section "Determining Exon Set Combinations", create a mock count data .txt file in the same format as count files created by countReads() isoform package function.
@@ -155,7 +225,10 @@ for(clust in names(exon_sets)){
 }
 
 # Sample random counts for each exon set - place-holder counts only, not official simulated counts
-cts = sample(2:8, size = length(exon_vec), replace = T)
+# cts = sample(2:8, size = length(exon_vec), replace = T)
+
+# Give each exon set an arbitrary count value
+cts = rep(1, times = length(exon_vec))
 
 mock_counts = data.frame(cts, exon_vec)
 
@@ -167,8 +240,8 @@ write.table(mock_counts, file = "Human_Materials/mock_counts.txt", col.names = F
 Assumption: Can use the same effective length design matrices calculated here for all simulated data.
 
 ```{r, eval=FALSE}
-# total_reads = 2*10^7
-total_reads = sum(exon_vec)
+total_reads = 2*10^7
+# total_reads = sum(exon_vec)
 set.seed(8462)
 lens = round(rnorm(n = total_reads, mean = 300, sd = 50), digits = 0)
 lens_trunc = ifelse(lens < 150, 150, lens)
@@ -185,7 +258,7 @@ write.table(freq_dist, file = "Human_Materials/mock_fraglens.txt", col.names = F
 
 # Calculate Effective Length Design Matrices
 
-Source code files of interest:
+Source code files used to calculate effective length design matrix X:
 
 ```{r, eval=FALSE}
 code_files = c("IsoDeconv_Step1.R","dev_compiled_geneMod2.R","geneModel_X.R")
