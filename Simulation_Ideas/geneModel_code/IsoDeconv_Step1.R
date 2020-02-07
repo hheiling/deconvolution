@@ -133,3 +133,25 @@ IsoDeconv_Step1 = function(directory = NULL, mix_files, pure_ref_files, fraglens
   return(final_geneMod)
   
 }
+
+comp_total_cts = function(directory, countData){
+  
+  counts_list = list()
+  total_cts = numeric(length(countData))
+  
+  for(i in 1:length(countData)){
+    countsi = read.table(countData[i], as.is = T)
+    colNames = c("count","exons")
+    if (ncol(countsi) != 2) {
+      cN = sprintf("%s and %s", colNames[1], colNames[2])
+      stop(countFile, " should have 2 columns: ", cN, "\n")
+    }
+    
+    colnames(countsi) = colNames
+    counts_list[[i]] = countsi
+    counts_col = countsi[,1]
+    total_cts[i] = sum(counts_col)
+  }
+  
+  return(list(total_cts = total_cts, counts_list = counts_list))
+} # End comp_total_cts() function
