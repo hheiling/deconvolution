@@ -240,19 +240,34 @@ write.table(mock_counts, file = "Human_Materials/mock_counts.txt", col.names = F
 Assumption: Can use the same effective length design matrices calculated here for all simulated data.
 
 ```{r, eval=FALSE}
-total_reads = 2*10^7
-# total_reads = sum(exon_vec)
-set.seed(8462)
-lens = round(rnorm(n = total_reads, mean = 300, sd = 50), digits = 0)
-lens_trunc = ifelse(lens < 150, 150, lens)
 
-# Tabulate lengths to get frequency
-freq = table(lens_trunc)
+library(Rcpp)
+library(RcppArmadillo)
 
-freq_dist = data.frame(freq, lens_trunc)
-names(freq_dist) = NULL
+fragLens_out = function(total_reads = 2*10^7, mean = 300, SD = 50, lenMin = 150, lenMax = 600,
+                        out_file){
+  # fragLens_dist() in geneModel_code/fragLens_dist.cpp file
+  freq_dist = fragLens_dist(total_reads, mean, SD, lenMin, lenMax)
+  freq_dist = freq_dist[which(freq_dist[,1] > 0),]
+  write.table(freq_dist, file = out_file, col.names = F, row.names = F)
+}
 
-write.table(freq_dist, file = "Human_Materials/mock_fraglens.txt", col.names = F, row.names = F)
+set.seed(3860)
+fragLens_out(total_reads = 2*10^7, mean = 300, SD = 50, lenMin = 150, lenMax = 600,
+             out_file = "Human_Materials/mock_fraglens.txt")
+
+```
+
+View fraglens.txt output
+
+```{r}
+fl_dist = read.table("Human_Materials/mock_fraglens.txt", as.is = T)
+fl_dist
+sum(fl_dist[,1])
+
+summary(fl_dist)
+sum(fl_dist[,1]*fl_dist[,2]) / sum(fl_dist[,1])
+fl_dist[1,1] / sum(fl_dist[,1])
 ```
 
 
@@ -270,10 +285,12 @@ for(f in code_files){
 
 Run code:
 
-```{r, eval=FALSE}
+**Need to fix some bugs**
 
-X_info = IsoDeconv_Step1(directory = "Human_Materials", mix_files = "mock_counts", 
-                         pure_ref_files = matrix(c("mock_counts","fake"), nrow = 1), 
+```{r, eval=FALSE}
+getwd()
+X_info = IsoDeconv_Step1(directory = "Human_Materials", mix_files = "mock_counts.txt", 
+                         pure_ref_files = matrix(c("mock_counts.txt","fake"), nrow = 1), 
                          fraglens_files = "mock_fraglens.txt",
                          bedFile = "Homo_sapiens.GRCh37.66.nonoverlap.exon.bed", 
                          knownIsoforms= "Homo_sapiens.GRCh37.66.nonoverlap.exon.knownIsoforms.RData",
