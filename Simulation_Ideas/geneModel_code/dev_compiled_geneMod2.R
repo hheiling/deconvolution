@@ -164,13 +164,12 @@ dev_compiled_geneMod2 <- function(countData,labels,cellTypes,total_cts,bedFile,k
     for(clust in all_clusters){
       clust_genes = unique(concat_geneMod[[clust]]$info$gene)
       if(any(clust_genes %in% discrim_genes)){
-        idx_clust_tmp[i] = 1
+        idx_clust_tmp[which(all_clusters == clust)] = 1
       }
     }
   }else{
     idx_clust_tmp = rep(1, times = length(all_clusters))
   }
-  
   
   idx_clust = which(idx_clust_tmp==1)
   discrim_clusters = unique(all_clusters[idx_clust])

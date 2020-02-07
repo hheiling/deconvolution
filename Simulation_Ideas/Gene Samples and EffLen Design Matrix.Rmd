@@ -224,6 +224,8 @@ for(clust in names(exon_sets)){
   exon_vec = c(exon_vec, exon_sets[[clust]]$sets)
 }
 
+head(exon_vec, 20)
+
 # Sample random counts for each exon set - place-holder counts only, not official simulated counts
 # cts = sample(2:8, size = length(exon_vec), replace = T)
 
@@ -233,6 +235,14 @@ cts = rep(1, times = length(exon_vec))
 mock_counts = data.frame(cts, exon_vec)
 
 write.table(mock_counts, file = "Human_Materials/mock_counts.txt", col.names = F, row.names = F)
+```
+
+Examine mock counts output
+
+```{r}
+cts_fake = read.table("Human_Materials/mock_counts.txt", as.is = T)
+
+head(cts_fake, 20)
 ```
 
 # Simulate "Mock" Fragment Length Distribution
@@ -276,8 +286,7 @@ fl_dist[1,1] / sum(fl_dist[,1])
 Source code files used to calculate effective length design matrix X:
 
 ```{r, eval=FALSE}
-code_files = c("IsoDeconv_Step1.R","dev_compiled_geneMod2.R","geneModel_X.R",
-               "EffectiveLength_Total.R")
+code_files = c("IsoDeconv_Step1.R","dev_compiled_geneMod2.R","geneModel_X.R")
 for(f in code_files){
   source(sprintf("geneModel_code/%s",f))
 }
@@ -287,15 +296,44 @@ Run code:
 
 **Need to fix some bugs**
 
+Load IsoDeconvMM library
+
+```{r}
+# library(remotes)
+# install_github("hheiling/IsoDeconvMM", force = TRUE)
+# library(IsoDeconvMM)
+# library(stringr)
+# library(gtools)
+```
+
+
 ```{r, eval=FALSE}
-getwd()
-X_info = IsoDeconv_Step1(directory = "Human_Materials", mix_files = "mock_counts.txt", 
+
+library(IsoDeconvMM)
+library(stringr)
+library(gtools)
+prefix = getwd()
+
+X_info = IsoDeconv_Step1(directory = sprintf("%s/Human_Materials", prefix), 
+                         mix_files = "mock_counts.txt", 
                          pure_ref_files = matrix(c("mock_counts.txt","fake"), nrow = 1), 
                          fraglens_files = "mock_fraglens.txt",
                          bedFile = "Homo_sapiens.GRCh37.66.nonoverlap.exon.bed", 
                          knownIsoforms= "Homo_sapiens.GRCh37.66.nonoverlap.exon.knownIsoforms.RData",
                          discrim_genes = nTE_sim$geneId,
                          readLen = 75, lmax = 600, eLenMin = 0)
+
+length(X_info)
+names(X_info)
+
+```
+
+Explore output:
+
+```{r}
+unique(X_info[[1]]$chr1_1003$info$gene)
+
+any(unique(X_info[[1]]$chr1_1003$info$gene) %in% nTE_sim$geneId)
 ```
 
 Limit X matrix to rows where at least one entry >= 1

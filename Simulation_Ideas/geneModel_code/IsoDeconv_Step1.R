@@ -73,7 +73,7 @@ IsoDeconv_Step1 = function(directory = NULL, mix_files, pure_ref_files, fraglens
   # Load knownIsoforms .RData object:
   
   if(!is.null(knownIsoforms)){
-    assign("isoAll", get(load(sprintf("%s/%s", prefix, knownIsoforms))))
+    assign("isoAll", get(load(sprintf("%s/%s", directory, knownIsoforms))))
   }else{
     stop("knownIsoforms list object must be present!")
   }
@@ -123,35 +123,14 @@ IsoDeconv_Step1 = function(directory = NULL, mix_files, pure_ref_files, fraglens
     
     # Perform some checks on the geneMod output
     ## See R/rem_clust.R for rem_clust() code
-    sig_geneMod = rem_clust(geneMod = fin_geneMod,co = 5,min_ind = 0)
+    # sig_geneMod = rem_clust(geneMod = fin_geneMod,co = 5,min_ind = 0)
     
     final_geneMod[[j]] = fin_geneMod
   }
   
   print("Finished creation of gene model")
   
-  return(final_geneMod)
+  return(final_geneMod[[1]])
   
 }
 
-comp_total_cts = function(directory, countData){
-  
-  counts_list = list()
-  total_cts = numeric(length(countData))
-  
-  for(i in 1:length(countData)){
-    countsi = read.table(countData[i], as.is = T)
-    colNames = c("count","exons")
-    if (ncol(countsi) != 2) {
-      cN = sprintf("%s and %s", colNames[1], colNames[2])
-      stop(countFile, " should have 2 columns: ", cN, "\n")
-    }
-    
-    colnames(countsi) = colNames
-    counts_list[[i]] = countsi
-    counts_col = countsi[,1]
-    total_cts[i] = sum(counts_col)
-  }
-  
-  return(list(total_cts = total_cts, counts_list = counts_list))
-} # End comp_total_cts() function
