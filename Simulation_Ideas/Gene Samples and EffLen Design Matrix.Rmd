@@ -11,7 +11,13 @@ knitr::opts_chunk$set(echo = TRUE)
 
 # Overview
 
-Goal: Document steps to calculate effective length design matrix for possible exon sets.
+Goal: Document the steps used to perform the following tasks:
+
+* Filter gene clusters for clusters with desired criteria (only one gene per cluster, gene has 3+ isoforms ...) and sample 1000 gene clusters from the results
+
+* Find possible exon sets and create string labels for each set modeled after the labels given to exon sets in the `countReads()` output (isoform package).
+
+* Calculate effective length design matrix for possible exon sets.
 
 Needed libraries and materials:
 
@@ -23,6 +29,8 @@ library(gtools)
 load("Human_Materials/Homo_sapiens.GRCh37.66.nonoverlap.exon.knownIsoforms.RData")
 # Load the nTE object
 load("Human_Materials/Homo_sapiens.GRCh37.66.nTE.RData")
+# Load the eDat object
+eDat = readRDS("Human_Materials/ucla_eDat.rds")
 ```
 
 
@@ -36,7 +44,38 @@ First, from the nTE information, sample gene clusters with the following qualiti
 
 * Only consider clusters where the gene has 3 or more isoforms
 
+Using the eDat information from the UCLA data summary output, exlude genes with the following qualities:
+
+* Exclude genes that have low expression in UCLA data (information from eDat object)
+
 Of the gene clusters with these qualities, sample 1000 genes from the list.
+
+1. Identify genes with appropriately high expression across samples (eDat)
+
+```{r}
+
+dim(eDat)
+# head(rownames(eDat),10) # gene names
+# head(colnames(eDat),10) # sample ID
+eDat[1:5, 1:5]
+
+eDat_genes = str_split_fixed(rownames(eDat), "\\.", n = 2)
+
+select_gene = function(x){
+  q75 = quantile(x, prob = 0.75)
+  if(q75 > 30){
+    return(1)
+  }else{
+    return(0)
+  }
+}
+
+keep = apply(eDat, 1, function(x) select_gene(x))
+gene_options = eDat_genes[which(keep == 1),1]
+
+```
+
+2. Filter genes based on information available in the nTE data.frame and above expression information
 
 ```{r}
 
@@ -55,27 +94,46 @@ for(i in 1:22){
 
 # Limit to chromosome 1 and 2 for now
 nTE_12 = nTE[c(which(str_detect(nTE$clustID, "chr1_")), which(str_detect(nTE$clustID, "chr2_"))),]
-# Limit to clusters with 3+ isoforms
-nTE_12_multIso = nTE_12[which(nTE_12$nT > 2),]
 # Limit to clusters with only one gene
-clustID_table = table(nTE_12_multIso$clustID)
+clustID_table = table(nTE_12$clustID)
 clustID_singular = which(clustID_table == 1)
-nTE_subset = nTE_12_multIso[which(nTE_12_multIso$clustID %in% names(clustID_singular)),]
+nTE_clust_subset = nTE_12[which(nTE_12$clustID %in% names(clustID_singular)),]
+# Limit to clusters with 3+ isoforms
+nTE_subset = nTE_clust_subset[which(nTE_clust_subset$nT > 2),]
+
+
+# Check that selection of cluster worked properly
+for(clust in nTE_subset$clustID){
+  gene = nTE_subset[which(nTE_subset$clustID == clust),1]
+  if(length(gene) > 1){
+    cat("problem clust: ", clust, "\n")
+  }
+}
+
+for(clust in nTE_subset$clustID){
+  gene = nTE[which(nTE$clustID == clust),1]
+  if(length(gene) > 1){
+    cat("problem clust: ", clust, "\n")
+  }
+}
+
+# Limit to genes with appropriately high expression 
+nTE_subset2 = nTE_subset[(which(nTE_subset$geneId %in% gene_options)),]
 
 # Sample 1000 genes from nTE_subset (contains cluster info with desired qualities)
 set.seed(19483)
-nTE_sample = nTE_subset[sample(1:nrow(nTE_subset), size = 1000, replace = F),]
+nTE_sample = nTE_subset2[sample(1:nrow(nTE_subset2), size = 1000, replace = F),]
 
 # Order sample by chromosome then cluster number within chromosome
 nTE_sample$chr = substr(nTE_sample$clustID, start = 1, stop = 4)
 nTE_sample$ID_num = str_remove(nTE_sample$clustID, str_c(nTE_sample$chr,"_"))
-nTE_sim = nTE_sample[order(nTE_sample$chr, as.numeric(nTE_sample$ID_num)),]
+nTE_filtered = nTE_sample[order(nTE_sample$chr, as.numeric(nTE_sample$ID_num)),]
 
 # Ending result check:
-dim(nTE_sim)
-head(nTE_sim, 20)
+dim(nTE_filtered)
+head(nTE_filtered, 20)
 
-
+save(nTE_filtered, file = "Human_Materials/Homo_sapiens.GRCh37.66.nTE.filtered.RData")
 ```
 
 # Determining Exon Set Combinations
@@ -85,64 +143,64 @@ All possible single, double, and triple exon set combinations
 ```{r}
 # Extract exon set information for gene clusters of interest
 
-exon_sets = list()
-
-for(clust in nTE_sim$clustID){
-  
-  # Extract non-overlapping exon vs isoform matrix
-  candiIsoform = isoAll[[clust]]
-  iso_names = colnames(candiIsoform)
-  # Extract gene information for each cluster
-  gene = nTE_sim[which(nTE_sim$clustID == clust),1]
-  
-  # Total isoforms
-  iso_total = ncol(candiIsoform)
-  
-  sets1 = as.character(NULL)
-  sets2 = as.character(NULL)
-  sets3 = as.character(NULL)
-  
-  for(j in 1:iso_total){
-    # Identify exons that appear in isoform j
-    subset_exons = as.character(which(candiIsoform[,j] == 1))
-    num_exons = length(subset_exons)
-  
-    single_sets = str_c(clust, "|", gene, "|", subset_exons, ";")
-  
-    if(num_exons > 1){
-      double_combos = combinations(n = num_exons, r = 2)
-      double_sets = str_c(single_sets[double_combos[,1]], single_sets[double_combos[,2]])
-    }else{
-      double_sets = NULL
-    }
-    
-    if(num_exons > 2){
-      triple_combos = combinations(n = num_exons, r = 3)
-      triple_sets = str_c(single_sets[triple_combos[,1]],
-                          single_sets[triple_combos[,2]],
-                          single_sets[triple_combos[,3]])
-    }else{
-      triple_sets = NULL
-    }
-  
-    sets1 = union(sets1, single_sets)
-    sets2 = union(sets2, double_sets)
-    sets3 = union(sets3, triple_sets)
-  
-  }
-
-  # sets_all = list(single_sets = sets1, double_sets = sets2, triple_sets = sets3)
-  
-  sets_all = c(sets1, sets2, sets3)
-  
-  exon_sets[[clust]] = list(candiIsoform = candiIsoform, sets = sets_all)
-  
-}
-
-# Examine output
-head(exon_sets$chr1_3$sets, 10)
-tail(exon_sets$chr1_3$sets, 10)
-length(exon_sets$chr1_3$sets)
+# exon_sets = list()
+# 
+# for(clust in nTE_filtered$clustID){
+#   
+#   # Extract non-overlapping exon vs isoform matrix
+#   candiIsoform = isoAll[[clust]]
+#   iso_names = colnames(candiIsoform)
+#   # Extract gene information for each cluster
+#   gene = nTE_filtered[which(nTE_filtered$clustID == clust),1]
+#   
+#   # Total isoforms
+#   iso_total = ncol(candiIsoform)
+#   
+#   sets1 = as.character(NULL)
+#   sets2 = as.character(NULL)
+#   sets3 = as.character(NULL)
+#   
+#   for(j in 1:iso_total){
+#     # Identify exons that appear in isoform j
+#     subset_exons = as.character(which(candiIsoform[,j] == 1))
+#     num_exons = length(subset_exons)
+#   
+#     single_sets = str_c(clust, "|", gene, "|", subset_exons, ";")
+#   
+#     if(num_exons > 1){
+#       double_combos = combinations(n = num_exons, r = 2)
+#       double_sets = str_c(single_sets[double_combos[,1]], single_sets[double_combos[,2]])
+#     }else{
+#       double_sets = NULL
+#     }
+#     
+#     if(num_exons > 2){
+#       triple_combos = combinations(n = num_exons, r = 3)
+#       triple_sets = str_c(single_sets[triple_combos[,1]],
+#                           single_sets[triple_combos[,2]],
+#                           single_sets[triple_combos[,3]])
+#     }else{
+#       triple_sets = NULL
+#     }
+#   
+#     sets1 = union(sets1, single_sets)
+#     sets2 = union(sets2, double_sets)
+#     sets3 = union(sets3, triple_sets)
+#   
+#   }
+# 
+#   # sets_all = list(single_sets = sets1, double_sets = sets2, triple_sets = sets3)
+#   
+#   sets_all = c(sets1, sets2, sets3)
+#   
+#   exon_sets[[clust]] = list(candiIsoform = candiIsoform, sets = sets_all)
+#   
+# }
+# 
+# # Examine output
+# head(exon_sets$chr1_3$sets, 10)
+# tail(exon_sets$chr1_3$sets, 10)
+# length(exon_sets$chr1_3$sets)
 
 ```
 
@@ -153,13 +211,17 @@ Only consecutive exon sets (i.e. if isoform has exons 2, 3, 5, and 7, then all d
 
 exon_sets = list()
 
-for(clust in nTE_sim$clustID){
+for(clust in nTE_filtered$clustID){
   
   # Extract non-overlapping exon vs isoform matrix
   candiIsoform = isoAll[[clust]]
   iso_names = colnames(candiIsoform)
   # Extract gene information for each cluster
-  gene = nTE_sim[which(nTE_sim$clustID == clust),1]
+  gene = nTE_filtered[which(nTE_filtered$clustID == clust),1]
+  
+  if(length(gene) > 1){
+    cat("clust with too many genes: ", clust, "\n")
+  }
   
   # Total isoforms
   iso_total = ncol(candiIsoform)
@@ -208,9 +270,9 @@ for(clust in nTE_sim$clustID){
 }
 
 # Examine output
-head(exon_sets$chr1_3$sets, 10)
-tail(exon_sets$chr1_3$sets, 10)
-length(exon_sets$chr1_3$sets)
+head(exon_sets$chr1_2$sets, 10)
+tail(exon_sets$chr1_2$sets, 10)
+length(exon_sets$chr1_2$sets)
 
 ```
 
@@ -320,28 +382,61 @@ X_info = IsoDeconv_Step1(directory = sprintf("%s/Human_Materials", prefix),
                          fraglens_files = "mock_fraglens.txt",
                          bedFile = "Homo_sapiens.GRCh37.66.nonoverlap.exon.bed", 
                          knownIsoforms= "Homo_sapiens.GRCh37.66.nonoverlap.exon.knownIsoforms.RData",
-                         discrim_genes = nTE_sim$geneId,
+                         discrim_genes = nTE_filtered$geneId,
                          readLen = 75, lmax = 600, eLenMin = 0)
 
+print(" ")
 length(X_info)
-names(X_info)
+# names(X_info)
+
 
 ```
 
-Explore output:
+Match rows of X matrix to exon sets (format names of exon sets the same as in the "mock_counts.txt" file and exon_sets list object)
 
 ```{r}
-unique(X_info[[1]]$chr1_1003$info$gene)
+# Check: rows X = exon sets?
 
-any(unique(X_info[[1]]$chr1_1003$info$gene) %in% nTE_sim$geneId)
+length(X_info$chr1_1008$exon_sets)
+nrow(X_info$chr1_1008$X)
+length(exon_sets$chr1_1008$sets)
+
+# Exon set labels - vector in same order as X rows
+clusters = names(X_info)
+
+for(clust in clusters){
+  # Extract gene name of cluster
+  ## Should only have one gene per cluster (due to earlier filtering of nTE object)
+  gene = unique(X_info[[clust]]$info$gene)
+  
+  if(length(gene) > 1){
+    cat("cluster ", clust, "\n")
+    cat("Too many genes in cluster \n")
+  }
+  
+  # Create strings of exon set labels (format like count file output)
+  sets = X_info[[clust]]$exon_sets
+  labels = character(length(sets))
+
+  for(e in 1:length(sets)){
+    e_set = sets[[e]]
+    e_labs = str_c(clust, "|", gene, "|", e_set, ";")
+    labels[e] = str_flatten(e_labs)
+
+  }
+
+  X_info[[clust]][["ExonSetLabels"]] = labels
+  # rownames(X_info[[clust]][["X"]]) = labels
+}
+
+save(X_info, file = "Human_Materials/Effective Length Design Matrices.RData")
+
 ```
 
-Limit X matrix to rows where at least one entry >= 1
+Limit X matrix to rows where at least one entry > 0
 
 ```{r}
 
 ```
-
-Extract row names of this limited X. These represent the possible exon sets.
 
 The End

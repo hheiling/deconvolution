@@ -130,7 +130,70 @@ IsoDeconv_Step1 = function(directory = NULL, mix_files, pure_ref_files, fraglens
   
   print("Finished creation of gene model")
   
-  return(final_geneMod[[1]])
+  EffLen_info = final_geneMod[[1]]
+  
+  if("Sample_Info" %in% names(EffLen_info)){
+    EffLen_info = EffLen_info[-which(names(EffLen_info) == "Sample_Info")]
+  }
+  
+  #--------------------------------------------------------------------------------#
+  # Attach exon set labels associated with exon sets represented by
+  # the effective length design matrices
+  #--------------------------------------------------------------------------------#
+  
+  # Exon set labels - vector in same order as X rows
+  clusters = names(EffLen_info)
+  
+  for(clust in clusters){
+    # Extract gene name of cluster
+    ## Should only have one gene per cluster (due to earlier filtering of nTE object)
+    gene = unique(EffLen_info[[clust]]$info$gene)
+    
+    if(length(gene) > 1){
+      cat("cluster ", clust, "\n")
+      cat("Too many genes in cluster \n")
+    }
+    
+    # Create strings of exon set labels (format like count file output)
+    sets = EffLen_info[[clust]]$exon_sets
+    labels = character(length(sets))
+    
+    for(e in 1:length(sets)){
+      e_set = sets[[e]]
+      e_labs = str_c(clust, "|", gene, "|", e_set, ";")
+      labels[e] = str_flatten(e_labs)
+      
+    }
+    
+    EffLen_info[[clust]][["ExonSetLabels"]] = labels
+    # rownames(EffLen_info[[clust]][["X"]]) = labels
+    
+  }
+  
+  #--------------------------------------------------------------------------------#
+  # Modify effective length design matrices:
+  # Remove exon sets (and corresponding rows in the X matrix) that have all 0
+  # If an entry has a value above 0 but less than 1, round to 1
+  # Modify ExonSetLabels to reflect removal of exons (if applicable for a cluster)
+  #--------------------------------------------------------------------------------#
+  
+  for(clust in clusters){
+    
+    X = EffLen_info[[clust]]$X
+    exon_sets = EffLen_info[[clust]]$ExonSetLabels
+    
+    keep = which(rowSums(X) > 0)
+    X2 = X[keep,]
+    exon_sets2 = exon_sets[keep]
+    
+    X3 = ifelse(X2 > 0 & X2 < 1, 1, X2)
+    
+    EffLen_info[[clust]][["X"]] = X3
+    EffLen_info[[clust]][["ExonSetLabels"]] = exon_sets2
+    
+  }
+  
+  return(EffLen_info)
   
 }
 

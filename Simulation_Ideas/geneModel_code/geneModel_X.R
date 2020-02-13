@@ -228,7 +228,7 @@ geneModel_X <- function (gene, d, pdDist, isoforms, lmax = length(pdDist),
                     nrow(X), ncol(X)))
   }
   
-  gm = list(info=info, candiIsoform = isoforms, X = X)
+  gm = list(info=info, candiIsoform = isoforms, X = X, exon_sets = exons)
   
   #--------------------------------------------------------------------------------------------------#
   # OUTPUT VECTOR CREATION - Cut                                                                     #
