@@ -7,6 +7,10 @@ output: html_document
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+# install.packages("devtools")
+# library(devtools)
+# install_github("Sun-lab/asSeq/asSeq")
+# install_github("Sun-lab/isoform/isoform")
 ```
 
 ## Introductory Notes
@@ -53,19 +57,18 @@ The Step 01 code performs sorting and some basic QC of all of the .bam files pre
 
 `fileDirectory`: character string of the directory where the Step_01 to Step_04 code script files were downloaded.
 
+Note that absolute complete path should be given. Path like `~/dir1` may lead to errors in bam file processing steps. 
+
 ### Enter appropriate arguments:
 
 ```{r}
 
-inputDirectory = "/home/hheiling_unc_edu/deconvolution/test_process"
-
-workingDirectory = "/home/hheiling_unc_edu/deconvolution/test_process/test_materials"
+inputDirectory = "/Users/wsun/research/data/blueprint/bams"
+workingDirectory = "/Users/wsun/research/data/blueprint/bams_processed"
 
 if(is.null(workingDirectory)){
   workingDirectory = inputDirectory
 }
-
-fileDirectory = "/home/hheiling_unc_edu/deconvolution/Step_0_Processes"
 
 ```
 
@@ -74,9 +77,7 @@ fileDirectory = "/home/hheiling_unc_edu/deconvolution/Step_0_Processes"
 Reminder: Depending on your operating system, you may need to modify the path in the `sprintf()` statement below as well as several `sprinf()` statments in the sourced file if your directory paths require backward slashes instead of forward slashes.
 
 ```{r}
-library(stringr)
-library(asSeq)
-source(sprintf("%s/Step_01_PrepareBAM.R", fileDirectory))
+source("Step_01_PrepareBAM.R")
 ```
 
 ## Step 02 Optional: Simulate Mixture .bam Files
@@ -251,7 +252,7 @@ Note: Code should be run within the working directory, `workingDirectory`
 
 ```{r}
 # BED file 
-bedFile = "Mus_musculus.NCBIM37.67.nonoverlap.exon.bed"
+bedFile = "../Simulation_Ideas/Human_Materials/Homo_sapiens.GRCh37.66.nonoverlap.exon.bed"
 
 # Were mixture files simulated in Step 02?
 sim = FALSE
