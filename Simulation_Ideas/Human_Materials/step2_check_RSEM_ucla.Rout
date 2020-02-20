@@ -1,0 +1,570 @@
+
+R version 3.5.2 (2018-12-20) -- "Eggshell Igloo"
+Copyright (C) 2018 The R Foundation for Statistical Computing
+Platform: x86_64-apple-darwin15.6.0 (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+> 
+> library(data.table)
+> 
+> # ----------------------------------------------------------------------
+> # check RNAseq meta data
+> # ----------------------------------------------------------------------
+> 
+> # work.dir = "research/data/PsychENCODE/ASD"
+> # setwd(work.dir)
+> 
+> ucla.rna = read.csv("meta_data/UCLA_R01MH094714_ASD_Metadata_RNAseq.csv",
++                     as.is=TRUE)
+> dim(ucla.rna)
+[1] 341  33
+> ucla.rna[1:2,]
+    Assay Individual_ID                     Sample_ID
+1 RNA-seq       UMB5342 Sample_UMB5342_ba41_42_22_1st
+2 RNA-seq       UMB5340 Sample_UMB5340_ba41_42_22_2nd
+                                                   File_Name BrodmannArea
+1 PEC_ASD_UCLA_TC_mRNA_HiSeq2000_UMB5342_ba41_42_22_1st.R1/2   ba41-42-22
+2 PEC_ASD_UCLA_TC_mRNA_HiSeq2000_UMB5340_ba41_42_22_2nd.R1/2   ba41-42-22
+      BrainRegion CellType TissueState RIN                LibraryPrep
+1 Temporal Cortex       NA       Chunk 7.7 unstranded, rRNA depletion
+2 Temporal Cortex       NA       Chunk 8.2 unstranded, rRNA depletion
+     LibraryKit    RunType ReadLength SequencingPlatform TotalReads MappedReads
+1 RiboZero Gold paired-end         50          HiSeq2000   32650467    32650467
+2 RiboZero Gold paired-end         50          HiSeq2000   51322382    51322382
+  Sequencing.Batch Reads.after.rmdup.Samtools Number.of.dup.readsSamtools
+1           batch1                   54729370                    18050564
+2           batch1                   88923145                    23182931
+  Unique.ReadsSamtools Proportion.of.exonic.reads.HTSeq HQ.Aligned.Reads.picard
+1             54014019                        0.2480157                29793360
+2             87853474                        0.2067946                47773061
+  PF.All.Bases.picard Coding.Bases.picard UTR.Bases.picard
+1          3264856945           849287731       1139440038
+2          5131914069          1117713858       1513227165
+  Intronic.Bases.picard Intergenic.bases.picard Median.CV.Coverage.picard
+1            1012631363               263497813                  0.544374
+2            2135222937               365750109                  0.527460
+  Median.5prime.Bias.picard Median.3prime.Bias.picard
+1                  0.453884                  0.736824
+2                  0.423258                  0.744557
+  Median.5to3prime.Bias.picard AT.Dropout.picard GC.Dropout.picard
+1                     0.610367          25.99062          0.620264
+2                     0.576192          16.29230          1.382252
+> 
+> length(unique(ucla.rna$Individual_ID))
+[1] 100
+> length(unique(ucla.rna$Sample_ID))
+[1] 341
+> 
+> table(ucla.rna$BrodmannArea)
+
+           ba41-42-22        ba9     vermis 
+        88         80         89         84 
+> table(ucla.rna$BrainRegion)
+
+       Cerebellum    frontal cortex   parietal cortex Prefrontal Cortex 
+               84                22                23                89 
+  temporal cortex   Temporal Cortex     visual cortex 
+               20                80                23 
+> 
+> table(ucla.rna$BrodmannArea, ucla.rna$BrainRegion)
+            
+             Cerebellum frontal cortex parietal cortex Prefrontal Cortex
+                      0             22              23                 0
+  ba41-42-22          0              0               0                 0
+  ba9                 0              0               0                89
+  vermis             84              0               0                 0
+            
+             temporal cortex Temporal Cortex visual cortex
+                          20               0            23
+  ba41-42-22               0              80             0
+  ba9                      0               0             0
+  vermis                   0               0             0
+> 
+> w2kp = which(ucla.rna$BrodmannArea == "ba9")
+> ucla.rna = ucla.rna[w2kp,]
+> length(unique(ucla.rna$Individual_ID))
+[1] 85
+> length(unique(ucla.rna$Sample_ID))
+[1] 89
+> 
+> t2 = table(ucla.rna$Individual_ID)
+> t2 = t2[t2 > 1]
+> t2
+
+AN03217 AN07176 AN17425 UMB4334 
+      2       2       2       2 
+> 
+> ucla.rna[which(ucla.rna$Individual_ID %in% names(t2)),]
+      Assay Individual_ID              Sample_ID
+106 RNA-seq       UMB4334            UMB4334_ba9
+107 RNA-seq       UMB4334 Sample_UMB4334_ba9_1st
+118 RNA-seq       AN17425  Sample_AN17425_ba9_31
+119 RNA-seq       AN17425 Sample_AN17425_ba9_1st
+151 RNA-seq       AN07176  Sample_AN07176_ba9_96
+152 RNA-seq       AN07176  Sample_AN07176_ba9_13
+160 RNA-seq       AN03217  Sample_AN03217_ba9_91
+161 RNA-seq       AN03217 Sample_AN03217_ba9_2nd
+                                               File_Name BrodmannArea
+106     PEC_ASD_UCLA_PFC_mRNA_HiSeq2000_UMB4334_ba9.R1/2          ba9
+107 PEC_ASD_UCLA_PFC_mRNA_HiSeq2000_UMB4334_ba9_1st.R1/2          ba9
+118  PEC_ASD_UCLA_PFC_mRNA_HiSeq2000_AN17425_ba9_31.R1/2          ba9
+119 PEC_ASD_UCLA_PFC_mRNA_HiSeq2000_AN17425_ba9_1st.R1/2          ba9
+151  PEC_ASD_UCLA_PFC_mRNA_HiSeq2000_AN07176_ba9_96.R1/2          ba9
+152  PEC_ASD_UCLA_PFC_mRNA_HiSeq2000_AN07176_ba9_13.R1/2          ba9
+160  PEC_ASD_UCLA_PFC_mRNA_HiSeq2000_AN03217_ba9_91.R1/2          ba9
+161 PEC_ASD_UCLA_PFC_mRNA_HiSeq2000_AN03217_ba9_2nd.R1/2          ba9
+          BrainRegion CellType TissueState RIN                LibraryPrep
+106 Prefrontal Cortex       NA       Chunk 9.1 unstranded, rRNA depletion
+107 Prefrontal Cortex       NA       Chunk 7.9 unstranded, rRNA depletion
+118 Prefrontal Cortex       NA       Chunk 5.4 unstranded, rRNA depletion
+119 Prefrontal Cortex       NA       Chunk 7.7 unstranded, rRNA depletion
+151 Prefrontal Cortex       NA       Chunk 5.2 unstranded, rRNA depletion
+152 Prefrontal Cortex       NA       Chunk 6.3 unstranded, rRNA depletion
+160 Prefrontal Cortex       NA       Chunk 7.0 unstranded, rRNA depletion
+161 Prefrontal Cortex       NA       Chunk 7.5 unstranded, rRNA depletion
+       LibraryKit    RunType ReadLength SequencingPlatform TotalReads
+106 RiboZero Gold paired-end         50          HiSeq2000   76124882
+107 RiboZero Gold paired-end         50          HiSeq2000   39717525
+118 RiboZero Gold paired-end         50          HiSeq2000   42798619
+119 RiboZero Gold paired-end         50          HiSeq2000   39415127
+151 RiboZero Gold paired-end         50          HiSeq2000   53647224
+152 RiboZero Gold paired-end         50          HiSeq2000   38627360
+160 RiboZero Gold paired-end         50          HiSeq2000   30067827
+161 RiboZero Gold paired-end         50          HiSeq2000   35068341
+    MappedReads Sequencing.Batch Reads.after.rmdup.Samtools
+106    76124882           batch3                   43269021
+107    39717525           batch1                   63386038
+118    42798619           batch1                   76120422
+119    39415127           batch1                   68312282
+151    53647224           batch1                   87723935
+152    38627360           batch1                   66565573
+160    30067827           batch1                   52555422
+161    35068341           batch1                   64107211
+    Number.of.dup.readsSamtools Unique.ReadsSamtools
+106                    18961341             42797949
+107                    24629342             62611845
+118                    16899540             75208677
+119                    18032058             67430211
+151                    29629993             86797018
+152                    18182687             65738865
+160                    13488276             51941154
+161                    11643249             63138814
+    Proportion.of.exonic.reads.HTSeq HQ.Aligned.Reads.picard
+106                        0.3046960                71817393
+107                        0.2798300                36364129
+118                        0.1816765                40033059
+119                        0.2088389                36678723
+151                        0.2524840                49723746
+152                        0.2145494                35894954
+160                        0.2042326                27793296
+161                        0.1537053                33157531
+    PF.All.Bases.picard Coding.Bases.picard UTR.Bases.picard
+106          7611906535          1467330648       2470375899
+107          3971528509           974329685       1352304627
+118          4279586402           926678983       1258923079
+119          3941275865           909035261       1214061612
+151          5364400714          1381126125       1741263257
+152          3862500576           900719504       1171375893
+160          3006580323           615011364        925650171
+161          3506581251           667089420        846558811
+    Intronic.Bases.picard Intergenic.bases.picard Median.CV.Coverage.picard
+106            2984192271               690007717                  0.462811
+107            1277152663               367741534                  0.524681
+118            1813450805               280533535                  0.504786
+119            1562936595               255242397                  0.526306
+151            1799832528               442178804                  0.514492
+152            1554142775               236262404                  0.542412
+160            1267323172               198595616                  0.477163
+161            1662332253               330600767                  0.513428
+    Median.5prime.Bias.picard Median.3prime.Bias.picard
+106                  0.436503                  0.845467
+107                  0.449937                  0.715549
+118                  0.451630                  0.758158
+119                  0.451405                  0.712614
+151                  0.485332                  0.750047
+152                  0.431540                  0.742311
+160                  0.469191                  0.778436
+161                  0.425142                  0.752202
+    Median.5to3prime.Bias.picard AT.Dropout.picard GC.Dropout.picard
+106                     0.512718          17.14157          0.317834
+107                     0.599539          24.29722          0.621852
+118                     0.591319          15.78891          1.001404
+119                     0.621214          19.37270          0.414443
+151                     0.644366          23.05039          0.511216
+152                     0.564496          20.89977          0.273280
+160                     0.595701          16.95247          1.875613
+161                     0.575067          16.23444          0.068238
+> 
+> table(ucla.rna$Sequencing.Batch)
+
+batch1 batch2 batch3 
+    64     10     15 
+> 
+> # ----------------------------------------------------------------------
+> # check RNAseq meta data
+> # ----------------------------------------------------------------------
+> 
+> fnm.ucla.cl = "UCLA_R01MH094714_ASD_Metadata_Clinical_August2016Release.csv"
+> ucla.clinic = read.csv(file.path("meta_data", fnm.ucla.cl), as.is=TRUE)
+> dim(ucla.clinic)
+[1] 130  26
+> ucla.clinic[1:2,]
+         Grant StudyName Individual_ID BrainBank     Organism  PMI pH
+1 R01MH094714        ASD       AN00493       ATP Homo sapiens  8.3 NA
+2 R01MH094714        ASD       AN00764       ATP Homo sapiens 23.7 NA
+  BrainWeight Sex AgeDeath Diagnosis CauseDeath IQ          Detailed.Diagnosis
+1        1575   M       27       ASD   Drowning    Autism - confirmed by ADI-R
+2        1144   M       20       ASD   Accident 52 Autism - confirmed by ADI-R
+  Agonal.State Seizures Pyschiatric.Medications
+1                    No                      No
+2            S       No                      No
+                    Comorbidity.notes..other.than.seizures.
+1 Blind, septo-optical dysplasia, viral meningitis, measles
+2                          No major comorbidities, vitiligo
+  ADI.R.A..cut.off.10. ADI.R.B..NV..cut.off.7. ADI.R.B..V..cut.off.8.
+1                                                                    
+2                   27                      13                     NT
+  ADI.R.C..cut.off.3. ADI.R.D..cut.off.1. IQ.notes    Medication_notes
+1                                                                     
+2                   6                   4  Cattell minocin, benzamycin
+  Seizure_notes
+1    none noted
+2    none noted
+> 
+> sapply(c("Grant","StudyName","BrainBank","Organism", "Sex", 
++          "Diagnosis", "Agonal.State"), 
++        function(xx) table(ucla.clinic[,xx], useNA="ifany"))
+$Grant
+
+R01MH094714  
+         130 
+
+$StudyName
+
+ASD 
+130 
+
+$BrainBank
+
+         ATP  Harvard-ATP London Brain        NICHD       Oxford 
+          58            3            8           39           22 
+
+$Organism
+
+Homo sapiens 
+         130 
+
+$Sex
+
+  F   M 
+ 27 103 
+
+$Diagnosis
+
+    ASD Control 
+     56      74 
+
+$Agonal.State
+
+    I ID  P RD  S SD SZ 
+48  7  3  9  7 28 18 10 
+
+> 
+> length(unique(ucla.clinic$Individual_ID))
+[1] 130
+> table(unique(ucla.rna$Individual_ID) %in% ucla.clinic$Individual_ID)
+
+TRUE 
+  85 
+> 
+> w2kp = which(ucla.clinic$Individual_ID %in% ucla.rna$Individual_ID)
+> ucla.clinic = ucla.clinic[w2kp,]
+> dim(ucla.clinic)
+[1] 85 26
+> 
+> sapply(c("Grant","StudyName","BrainBank","Organism", "Sex", 
++          "Diagnosis", "Agonal.State"), 
++        function(xx) table(ucla.clinic[,xx], useNA="ifany"))
+$Grant
+
+R01MH094714  
+          85 
+
+$StudyName
+
+ASD 
+ 85 
+
+$BrainBank
+
+  ATP NICHD 
+   53    32 
+
+$Organism
+
+Homo sapiens 
+          85 
+
+$Sex
+
+ F  M 
+18 67 
+
+$Diagnosis
+
+    ASD Control 
+     42      43 
+
+$Agonal.State
+
+    I  P  S SZ 
+37  6  8 27  7 
+
+> 
+> # ----------------------------------------------------------------------
+> # read in gene expresion data
+> # ----------------------------------------------------------------------
+> 
+> fnms = list.files(path="UCLA_ASD", pattern="RSEM_Quant.genes.results", 
++                   full.names=TRUE, recursive=TRUE)
+> length(fnms)
+[1] 253
+> fnms[1:5]
+[1] "UCLA_ASD/318/14855318/AN14757_vermis_39.RSEM_Quant.genes.results" 
+[2] "UCLA_ASD/320/14855320/AN10723_vermis_2nd.RSEM_Quant.genes.results"
+[3] "UCLA_ASD/322/14855322/UMB5079_vermis_1st.RSEM_Quant.genes.results"
+[4] "UCLA_ASD/325/14855325/UMB5282_vermis.RSEM_Quant.genes.results"    
+[5] "UCLA_ASD/326/14855326/AN16115_vermis_72.RSEM_Quant.genes.results" 
+> 
+> dim(ucla.rna)
+[1] 89 33
+> ucla.rna[1:2,1:10]
+     Assay Individual_ID   Sample_ID
+81 RNA-seq       UMB5558 UMB5558_ba9
+82 RNA-seq       UMB5391 UMB5391_ba9
+                                          File_Name BrodmannArea
+81 PEC_ASD_UCLA_PFC_mRNA_HiSeq2000_UMB5558_ba9.R1/2          ba9
+82 PEC_ASD_UCLA_PFC_mRNA_HiSeq2000_UMB5391_ba9.R1/2          ba9
+         BrainRegion CellType TissueState RIN                LibraryPrep
+81 Prefrontal Cortex       NA       Chunk 5.2 unstranded, rRNA depletion
+82 Prefrontal Cortex       NA       Chunk 6.6 unstranded, rRNA depletion
+> 
+> ucla.rna$Sample_ID = gsub("Sample_", "", ucla.rna$Sample_ID)
+> fnms2find = paste0(ucla.rna$Sample_ID, ".RSEM_Quant.genes.results")
+> 
+> # make sure the resutls are available for all the samples
+> table(grepl("_ba9", fnms))
+
+FALSE  TRUE 
+  164    89 
+> table(grepl("_ba9", fnms2find))
+
+TRUE 
+  89 
+> 
+> table(sapply(fnms2find, function(xx){sum(grepl(xx, x=fnms))}))
+
+ 1 
+89 
+> 
+> # collect gene expression data
+> for(k in 1:length(fnms2find)){
++   wi = grep(fnms2find[k], fnms); stopifnot(length(wi) == 1)
++   di = fread(fnms[wi])
++   
++   if(k == 1){
++     eDat = di$expected_count
++     genes = di$gene_id
++   }else{
++     if(nrow(di) != length(genes)){
++       stop("# of rows in di does not match with the # of rows of the 1st file\n")
++     }
++     
++     if(any(di$gene_id != genes)){
++       stop("gene ids of di do not match with the gene ids of the 1st file\n")
++     }
++     
++     eDat = cbind(eDat, di$expected_count)
++   }
++ }
+> 
+> dim(eDat)
+[1] 57820    89
+> eDat[1:2,1:5]
+     eDat              
+[1,]   95 108 87 208 90
+[2,]    4   2  3   5  1
+> rownames(eDat) = genes
+> colnames(eDat) = ucla.rna$Sample_ID
+> 
+> # ----------------------------------------------------------------------
+> # check again the dupliated samples to decide which one to keep
+> # keep the one with larger RIN
+> # ----------------------------------------------------------------------
+> 
+> ucla.rna$Total.Expected.Count = colSums(eDat)
+> 
+> ucla.rna.dup = ucla.rna[which(ucla.rna$Individual_ID %in% names(t2)), ]
+> ucla.rna.dup = ucla.rna.dup[order(ucla.rna.dup$Individual_ID, ucla.rna.dup$RIN),]
+> dim(ucla.rna.dup)
+[1]  8 34
+> ucla.rna.dup[,c(1:10,34)]
+      Assay Individual_ID       Sample_ID
+160 RNA-seq       AN03217  AN03217_ba9_91
+161 RNA-seq       AN03217 AN03217_ba9_2nd
+151 RNA-seq       AN07176  AN07176_ba9_96
+152 RNA-seq       AN07176  AN07176_ba9_13
+118 RNA-seq       AN17425  AN17425_ba9_31
+119 RNA-seq       AN17425 AN17425_ba9_1st
+107 RNA-seq       UMB4334 UMB4334_ba9_1st
+106 RNA-seq       UMB4334     UMB4334_ba9
+                                               File_Name BrodmannArea
+160  PEC_ASD_UCLA_PFC_mRNA_HiSeq2000_AN03217_ba9_91.R1/2          ba9
+161 PEC_ASD_UCLA_PFC_mRNA_HiSeq2000_AN03217_ba9_2nd.R1/2          ba9
+151  PEC_ASD_UCLA_PFC_mRNA_HiSeq2000_AN07176_ba9_96.R1/2          ba9
+152  PEC_ASD_UCLA_PFC_mRNA_HiSeq2000_AN07176_ba9_13.R1/2          ba9
+118  PEC_ASD_UCLA_PFC_mRNA_HiSeq2000_AN17425_ba9_31.R1/2          ba9
+119 PEC_ASD_UCLA_PFC_mRNA_HiSeq2000_AN17425_ba9_1st.R1/2          ba9
+107 PEC_ASD_UCLA_PFC_mRNA_HiSeq2000_UMB4334_ba9_1st.R1/2          ba9
+106     PEC_ASD_UCLA_PFC_mRNA_HiSeq2000_UMB4334_ba9.R1/2          ba9
+          BrainRegion CellType TissueState RIN                LibraryPrep
+160 Prefrontal Cortex       NA       Chunk 7.0 unstranded, rRNA depletion
+161 Prefrontal Cortex       NA       Chunk 7.5 unstranded, rRNA depletion
+151 Prefrontal Cortex       NA       Chunk 5.2 unstranded, rRNA depletion
+152 Prefrontal Cortex       NA       Chunk 6.3 unstranded, rRNA depletion
+118 Prefrontal Cortex       NA       Chunk 5.4 unstranded, rRNA depletion
+119 Prefrontal Cortex       NA       Chunk 7.7 unstranded, rRNA depletion
+107 Prefrontal Cortex       NA       Chunk 7.9 unstranded, rRNA depletion
+106 Prefrontal Cortex       NA       Chunk 9.1 unstranded, rRNA depletion
+    Total.Expected.Count
+160             17527251
+161             16397254
+151             38193380
+152             23201731
+118             25232801
+119             24408834
+107             26570527
+106             29500328
+> 
+> sam2rm = ucla.rna.dup$Sample_ID[seq(1,7,by=2)]
+> sam2rm
+[1] "AN03217_ba9_91"  "AN07176_ba9_96"  "AN17425_ba9_31"  "UMB4334_ba9_1st"
+> 
+> w2rm = which(ucla.rna$Sample_ID %in% sam2rm)
+> w2rm
+[1] 27 38 71 80
+> 
+> ucla.rna = ucla.rna[-w2rm,]
+> table(table(ucla.rna$Individual_ID))
+
+ 1 
+85 
+> 
+> # ----------------------------------------------------------------------
+> # write out data 
+> # ----------------------------------------------------------------------
+> 
+> intersect(names(ucla.rna), names(ucla.clinic))
+[1] "Individual_ID"
+> ucla.rna = merge(ucla.rna, ucla.clinic)
+> dim(ucla.rna)
+[1] 85 59
+> ucla.rna[1:2,]
+  Individual_ID   Assay       Sample_ID
+1       AN00142 RNA-seq AN00142_ba9_3rd
+2       AN00493 RNA-seq AN00493_ba9_104
+                                             File_Name BrodmannArea
+1 PEC_ASD_UCLA_PFC_mRNA_HiSeq2000_AN00142_ba9_3rd.R1/2          ba9
+2 PEC_ASD_UCLA_PFC_mRNA_HiSeq2000_AN00493_ba9_104.R1/2          ba9
+        BrainRegion CellType TissueState RIN                LibraryPrep
+1 Prefrontal Cortex       NA       Chunk 6.2 unstranded, rRNA depletion
+2 Prefrontal Cortex       NA       Chunk 7.3 unstranded, rRNA depletion
+     LibraryKit    RunType ReadLength SequencingPlatform TotalReads MappedReads
+1 RiboZero Gold paired-end         50          HiSeq2000   36964044    36964044
+2 RiboZero Gold paired-end         50          HiSeq2000   52145501    52145501
+  Sequencing.Batch Reads.after.rmdup.Samtools Number.of.dup.readsSamtools
+1           batch2                   67236440                    11644956
+2           batch1                   87169850                    28225188
+  Unique.ReadsSamtools Proportion.of.exonic.reads.HTSeq HQ.Aligned.Reads.picard
+1             66464714                        0.1476261                35209653
+2             85777873                        0.2445962                48209522
+  PF.All.Bases.picard Coding.Bases.picard UTR.Bases.picard
+1          3696128365           762420774       1067054124
+2          5214226052          1466862726       1503657145
+  Intronic.Bases.picard Intergenic.bases.picard Median.CV.Coverage.picard
+1            1629514452               237139015                  0.503925
+2            1846713933               396992248                  0.573036
+  Median.5prime.Bias.picard Median.3prime.Bias.picard
+1                  0.445643                  0.782427
+2                  0.430014                  0.701245
+  Median.5to3prime.Bias.picard AT.Dropout.picard GC.Dropout.picard
+1                     0.566318          10.85077          1.954124
+2                     0.603043          30.15307          0.000647
+  Total.Expected.Count        Grant StudyName BrainBank     Organism   PMI pH
+1              4083452 R01MH094714        ASD       ATP Homo sapiens 24.61 NA
+2             32020379 R01MH094714        ASD       ATP Homo sapiens  8.30 NA
+  BrainWeight Sex AgeDeath Diagnosis CauseDeath IQ          Detailed.Diagnosis
+1        1480   M       44   Control          -              No Known Disorder
+2        1575   M       27       ASD   Drowning    Autism - confirmed by ADI-R
+  Agonal.State Seizures Pyschiatric.Medications
+1                                              
+2                    No                      No
+                    Comorbidity.notes..other.than.seizures.
+1                                                none noted
+2 Blind, septo-optical dysplasia, viral meningitis, measles
+  ADI.R.A..cut.off.10. ADI.R.B..NV..cut.off.7. ADI.R.B..V..cut.off.8.
+1                                                                    
+2                                                                    
+  ADI.R.C..cut.off.3. ADI.R.D..cut.off.1. IQ.notes Medication_notes
+1                                                    no information
+2                                                                  
+   Seizure_notes
+1 no information
+2     none noted
+> 
+> saveRDS(ucla.rna, file = "data/ucla_cDat.rds")
+> saveRDS(eDat, file = "data/ucla_eDat.rds")
+> 
+> # mem_used()
+> gc()
+           used  (Mb) gc trigger  (Mb) limit (Mb)  max used  (Mb)
+Ncells   497461  26.6    1091310  58.3         NA    631282  33.8
+Vcells 77002965 587.5  122528818 934.9      32768 101982940 778.1
+> 
+> sessionInfo()
+R version 3.5.2 (2018-12-20)
+Platform: x86_64-apple-darwin15.6.0 (64-bit)
+Running under: macOS  10.15.3
+
+Matrix products: default
+BLAS: /Library/Frameworks/R.framework/Versions/3.5/Resources/lib/libRblas.0.dylib
+LAPACK: /Library/Frameworks/R.framework/Versions/3.5/Resources/lib/libRlapack.dylib
+
+locale:
+[1] en_US.UTF-8/en_US.UTF-8/en_US.UTF-8/C/en_US.UTF-8/en_US.UTF-8
+
+attached base packages:
+[1] stats     graphics  grDevices utils     datasets  methods   base     
+
+other attached packages:
+[1] data.table_1.12.2
+
+loaded via a namespace (and not attached):
+[1] compiler_3.5.2
+> q(save="no")
+> proc.time()
+   user  system elapsed 
+ 31.758   1.102   6.098 
