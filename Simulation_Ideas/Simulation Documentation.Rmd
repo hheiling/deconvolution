@@ -153,7 +153,16 @@ Specify and apply fold changes to gene counts for genes specified to have differ
 #     matrix same dimension and organization of geneInfo$ct_mat
 geneCtDiffExp = diff_exp(gene_counts = geneInfo$ct_mat, n = n, J = J, 
                          CT_diffExp = 2, diff_genes_mat = diffGeneInfo, 
-                         propUp = 0.30, seed = seeds[4])
+                         propUp = 0.40, seed = seeds[4])
+
+# Identify and save gene names specified for differential expression and differential isoform usage
+# differential expression
+genesDiffExp = rownames(diffGeneInfo[which(diffGeneInfo[,"diffExp"] == 1),])
+# differential isoform usage
+genesDiffUsage = rownames(diffGeneInfo[which(diffGeneInfo[,"diffUsg"] == 1),])
+# save results 
+genes_df = data.frame(diffExp = genesDiffExp, diffUsg = genesDiffUsage)
+save(genes_df, file = "Human_Materials/genes_simulated_w_diffExp_diffUsg.RData")
 ```
 
 Check to make sure the ending fold changes for these 100 genes in Cell Type 2 are as expected. 
@@ -185,8 +194,7 @@ For all cell types, the 900 genes not specified to have differential isoform usa
 Cell type 1 will specify the uniform dirichlet class for the 100 differential usage genes; cell type two will specify the outlier dirichlet class; and cell type 3 will specify the paired dirichlet class. 
 
 ```{r}
-# Identify which genes specified to have differential isoform usage
-genesDiffUsage = rownames(diffGeneInfo[which(diffGeneInfo[,"diffUsg"] == 1),])
+
 
 # Specify isoform Dirichlet distribution type
 # Note: gene clusters chosen so number isoforms I >= 3 for all genes
@@ -268,9 +276,11 @@ library(stringr)
 # Simulate and record exon set counts 
 ## count.txt files saved in folder Human_Materials/Pure Sample Counts
 
-files1 = str_c("CT1_ref_",1:n,"_counts")
-files2 = str_c("CT2_ref_",1:n,"_counts")
-files3 = str_c("CT3_ref_",1:n,"_counts")
+rep_pure = c(str_c("0",1:9),10:n)
+
+files1 = str_c("CT1_ref_",rep_pure,"_counts")
+files2 = str_c("CT2_ref_",rep_pure,"_counts")
+files3 = str_c("CT3_ref_",rep_pure,"_counts")
 
 counts_output(exonInfo_1000 = iso_exon_1000, exonInfo_other = iso_exon_other,
               theta = geneInfo$theta,
@@ -330,6 +340,7 @@ p_combos[4,] = c(0.05,0.20,0.75)
 # Specify number of mixture replicates per probability combination
 # mix_rep = 20
 mix_rep = 2
+rep_label = str_c("0",1:9,10:mix_rep)
 
 # Specify total read counts for mixture replicates
 set.seed(seeds[12])
@@ -341,7 +352,7 @@ rownames(total_cts_mix) = str_c("rep_",1:mix_rep)
 # Create mixture samples
 mix_labels = matrix(NA, nrow = mix_rep, ncol = nrow(p_combos))
 for(p in 1:nrow(p_combos)){
-  mix_labels[,p] = str_c("Mixture_ProbCombo_",p,"_Replicate_",1:mix_rep,"_counts")
+  mix_labels[,p] = str_c("Mixture_ProbCombo_",p,"_Replicate_",rep_label,"_counts")
 }
 
 mix_creation(set_mixSim = set_mixSim, out_folder = "Human_Materials/Mixture Sample Counts",
@@ -350,20 +361,17 @@ mix_creation(set_mixSim = set_mixSim, out_folder = "Human_Materials/Mixture Samp
 
 ## Create Fragment length files for mixtures samples
 
-Question: Do we just need to make fragment length files with total reads = mixture total read counts, OR total reads = sum(mixture total read counts + all pure cell type reference total read counts)?
+For the purposes of this simulation, we will assume that the fragment length distribution is the same across all samples. Therefore, in an attempt to simplify the number of files created and used for the simulation, only one fragment length distribution file will be created. This file will be recycled for all `IsoDeconvMM` fit procedures for all mixture samples.
 
 ```{r}
-# fragLens_out = function(total_reads, mean = 300, SD = 50, lenMin = 150, lenMax = 600,
-                        # out_folder, file_names, seed)
+# fragLens_labels = matrix(NA, nrow = mix_rep, ncol = nrow(p_combos))
+# for(p in 1:nrow(p_combos)){
+#   fragLens_labels[,p] = str_c("Mixture_ProbCombo_",p,"_Replicate_", rep_label, "_fraglens")
+# }
 
-fragLens_labels = matrix(NA, nrow = mix_rep, ncol = nrow(p_combos))
-for(p in 1:nrow(p_combos)){
-  fragLens_labels[,p] = str_c("Mixture_ProbCombo_",p,"_Replicate_", 1:mix_rep, "_fragLens")
-}
-
-fragLens_out(total_reads = total_cts_mix, mean = 300, SD = 50, lenMax = 600, 
-             out_folder = "Human_Materials/Fragment Length Distributions",
-             file_names = fragLens_labels,
+fragLens_out(total_reads = 10^7, mean = 300, SD = 50, lenMax = 600, 
+             out_folder = "Human_Materials",
+             file_names = "sim_fraglens.txt",
              seed = seeds[14])
 ```
 
