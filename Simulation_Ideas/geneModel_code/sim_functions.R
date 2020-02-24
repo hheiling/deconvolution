@@ -521,6 +521,108 @@ mix_creation = function(set_mixSim, out_folder, file_labels, total_cts, probs, s
   
 }
 
+mix_creation2 = function(set_mixSim, out_folder, file_labels, total_cts, probs, seed){
+  
+  set.seed(seed)
+  
+  # Define variables
+  ## Number mixture replicates to create
+  mix_rep = length(total_cts)
+  ## Number cell types
+  J = length(probs)
+  ## Number pure reference samples per cell type (assume equal across all cell types)
+  M = length(set_mixSim[[1]])
+  
+  # Checks
+  if(sum(probs) != 1){
+    stop("probs must add to 1")
+  }
+  
+  # List of pure reference sample count data.frames
+  df_list = list()
+  for(j in 1:J){
+    pure_files = set_mixSim[[j]]
+    files_list = list()
+    for(f in 1:length(pure_files)){
+      df = read.table(file = pure_files[f], as.is = T)
+      colnames(df) = c("count","exons")
+      files_list[[f]] = df
+    }
+    df_list[[j]] = files_list
+  }
+  
+  # exon set labels (assume same across all pure reference samples)
+  exon_sets = df_list[[1]][[1]]$exons
+  # Number exon sets (assume equal across all pure reference samples)
+  E = length(exon_sets)
+  
+  # for(k in 1:nrow(probs)){
+  #   # Identify prob vector
+  #   p = probs[k,]
+  #   # Randomly select counts files from each cell type
+  #   pure_counts = matrix(NA, nrow = E, ncol = J)
+  #   for(j in 1:J){
+  #     counts_vec = df_list[[j]][[sample(1:M, size = 1)]]$count
+  #     pure_counts[,j] = counts_vec
+  #   }
+  #   
+  #   # Calculate ratio of total counts between mixture replicate and pure reference counts
+  #   cts_Ratio = matrix(NA, nrow = mix_rep, ncol = J)
+  #   for(rep in 1:mix_rep){
+  #     cts_Ratio[rep,] = total_cts[rep,k] / colSums(pure_counts)
+  #   }
+  #   
+  #   # Multiply p and cts_Ratio to appropriate columns of pure_counts to get mixture sample components
+  #   ## Round results and add results across exon sets
+  #   mixture = list()
+  #   for(rep in 1:mix_rep){
+  #     mix_components = pure_counts * matrix(p, nrow = nrow(pure_counts), ncol = J, byrow = T) *
+  #       matrix(cts_Ratio[rep,], nrow = nrow(pure_counts), ncol = J, byrow = T)
+  #     mixture[[rep]] = rowSums(round(mix_components))
+  #   }
+  #   
+  #   # Save mixture results in counts.txt files
+  #   for(rep in 1:mix_rep){
+  #     label = file_labels[rep,k]
+  #     df_mix = data.frame(count = mixture[[rep]], exons = exon_sets)
+  #     write.table(df_mix, file = sprintf("%s/%s.txt", out_folder, label), col.names = F, row.names = F)
+  #   }
+  # }
+  
+  # Identify prob vector
+  p = probs
+  # Randomly select counts files from each cell type
+  pure_counts = matrix(NA, nrow = E, ncol = J)
+  for(j in 1:J){
+    counts_vec = df_list[[j]][[sample(1:M, size = 1)]]$count
+    pure_counts[,j] = counts_vec
+  }
+
+  # Calculate ratio of total counts between mixture replicate and pure reference counts
+  cts_Ratio = matrix(NA, nrow = mix_rep, ncol = J)
+  for(rep in 1:mix_rep){
+    cts_Ratio[rep,] = total_cts[rep,k] / colSums(pure_counts)
+  }
+
+  # Multiply p and cts_Ratio to appropriate columns of pure_counts to get mixture sample components
+  ## Round results and add results across exon sets
+  mixture = list()
+  for(rep in 1:mix_rep){
+    mix_components = pure_counts * matrix(p, nrow = nrow(pure_counts), ncol = J, byrow = T) *
+      matrix(cts_Ratio[rep,], nrow = nrow(pure_counts), ncol = J, byrow = T)
+    mixture[[rep]] = rowSums(round(mix_components))
+  }
+
+  # Save mixture results in counts.txt files
+  for(rep in 1:mix_rep){
+    label = file_labels[rep,k]
+    df_mix = data.frame(count = mixture[[rep]], exons = exon_sets)
+    write.table(df_mix, file = sprintf("%s/%s.txt", out_folder, label), col.names = F, row.names = F)
+  }
+
+  
+}
+
 #-----------------------------------------------------------------------------#
 # Simulate Fragment Length Distribution Files                                 #
 #-----------------------------------------------------------------------------#
