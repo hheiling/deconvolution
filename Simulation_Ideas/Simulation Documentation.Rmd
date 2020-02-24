@@ -153,7 +153,7 @@ Specify and apply fold changes to gene counts for genes specified to have differ
 #     matrix same dimension and organization of geneInfo$ct_mat
 geneCtDiffExp = diff_exp(gene_counts = geneInfo$ct_mat, n = n, J = J, 
                          CT_diffExp = 2, diff_genes_mat = diffGeneInfo, 
-                         propUp = 0.40, seed = seeds[4])
+                         propUp = 0.35, seed = seeds[4])
 
 # Identify and save gene names specified for differential expression and differential isoform usage
 # differential expression
@@ -162,7 +162,7 @@ genesDiffExp = rownames(diffGeneInfo[which(diffGeneInfo[,"diffExp"] == 1),])
 genesDiffUsage = rownames(diffGeneInfo[which(diffGeneInfo[,"diffUsg"] == 1),])
 # save results 
 genes_df = data.frame(diffExp = genesDiffExp, diffUsg = genesDiffUsage)
-save(genes_df, file = "Human_Materials/genes_simulated_w_diffExp_diffUsg.RData")
+save(genes_df, file = "Simulated_Output/genes_simulated_w_diffExp_diffUsg.RData")
 ```
 
 Check to make sure the ending fold changes for these 100 genes in Cell Type 2 are as expected. 
@@ -228,6 +228,8 @@ iso_exon_1000[["CT3"]] = iso_exon_info(genes_info = geneCtDiffExp[,(2*n+1):(3*n)
                                        iso_dist = CT3_iso_dist,
                                        alphaRange = c(20,50),
                                        EffLen_info = X_info, seed = seeds[7])
+
+save(iso_exon_1000, file = "Simulated_Output/Iso_Exon_Params_1000.RData")
 ```
 
 The gene counts for the 'other' 4,172 genes will be approx. evenly distributed among the singular exon sets associated with the gene cluster. 
@@ -266,7 +268,7 @@ iso_exon_other[["CT3"]] = other_exonset_count(genes_info = geneCtDiffExp[,(2*n+1
 
 ## Record Exon Set Counts in counts.txt Files
 
-In this step, exon set counts are (a) simulated from the exon set negative binomial parameters for the 1,000 genes of interest and (b) recorded from the `iso_exon_other` list output. These exon set counts are then concatenated into one file for each sample and stored in a counts.txt file in the same output format as the function `countReads()` from the `isoform` R package. These count files are stored in the "Human_Materials/Pure Sample Counts" folder.
+In this step, exon set counts are (a) simulated from the exon set negative binomial parameters for the 1,000 genes of interest and (b) recorded from the `iso_exon_other` list output. These exon set counts are then concatenated into one file for each sample and stored in a counts.txt file in the same output format as the function `countReads()` from the `isoform` R package. These count files are stored in the "Simulated_Output/Pure Sample Counts" folder.
 
 ```{r}
 library(MASS)
@@ -274,7 +276,7 @@ library(stringr)
 # rnegbin(n = number of sample values, mu = vector of means, theta = vector of theta parameters or scalar that is recycled)
 
 # Simulate and record exon set counts 
-## count.txt files saved in folder Human_Materials/Pure Sample Counts
+## count.txt files saved in folder Simulated_Output/Pure Sample Counts
 
 rep_pure = c(str_c("0",1:9),10:n)
 
@@ -285,7 +287,7 @@ files3 = str_c("CT3_ref_",rep_pure,"_counts")
 counts_output(exonInfo_1000 = iso_exon_1000, exonInfo_other = iso_exon_other,
               theta = geneInfo$theta,
               file_labels = c(files1, files2, files3),
-              folder = "Human_Materials/Pure Sample Counts", seed = seeds[11])
+              folder = "Simulated_Output/Pure Sample Counts", seed = seeds[11])
 
 ```
 
@@ -310,11 +312,11 @@ Multiply all resulting exon set values by the proportion assigned to the cell ty
 Round all of these resulting exon set values, and add them up across the cell types within exon sets.
 
 ```{r}
-CT1_files = list.files(path = "Human_Materials/Pure Sample Counts/", pattern = "^CT1",
+CT1_files = list.files(path = "Simulated_Output/Pure Sample Counts/", pattern = "^CT1",
                        full.names = T)
-CT2_files = list.files(path = "Human_Materials/Pure Sample Counts/", pattern = "^CT2",
+CT2_files = list.files(path = "Simulated_Output/Pure Sample Counts/", pattern = "^CT2",
                        full.names = T)
-CT3_files = list.files(path = "Human_Materials/Pure Sample Counts/", pattern = "^CT3",
+CT3_files = list.files(path = "Simulated_Output/Pure Sample Counts/", pattern = "^CT3",
                        full.names = T)
 
 CT1_files_ref = CT1_files[1:(n/2)]
@@ -330,32 +332,58 @@ set_mixSim[["CT1"]] = CT1_files_mixSim
 set_mixSim[["CT2"]] = CT2_files_mixSim
 set_mixSim[["CT3"]] = CT3_files_mixSim
 
-# Need some ideas: How many to make?
-p_combos = matrix(NA, nrow = 4, ncol = J)
-p_combos[1,] = c(0.33,0.33,0.34)
-p_combos[2,] = c(0.25,0.25,0.50)
-p_combos[3,] = c(0.15,0.30,0.55)
-p_combos[4,] = c(0.05,0.20,0.75)
+# Goal: have all probabilities be between (0.1,0.8)
+p_CT1 = seq(from = 0.1, to = 0.8, by = 0.05)
+
+for(p in 1:(length(p_CT1) - 1)){
+  p_CT2 = seq(from = 0.10, to = (1-0.1-p_CT1[p]), by = 0.05)
+  
+  num_combos = length(p_CT2)
+  if(p == 1){
+    p_combos = matrix(NA, nrow = num_combos, ncol = 3)
+    p_combos[,1] = rep(p_CT1[p], times = num_combos)
+    p_combos[,2] = p_CT2
+    p_combos[,3] = 1 - p_combos[,1] - p_combos[,2]
+  }else{
+    p_combos2 = matrix(NA, nrow = num_combos, ncol = 3)
+    p_combos2[,1] = rep(p_CT1[p], times = num_combos)
+    p_combos2[,2] = p_CT2
+    p_combos2[,3] = 1 - p_combos2[,1] - p_combos2[,2]
+    
+    p_combos = rbind(p_combos, p_combos2)
+  }
+  
+}
+
+p_combos = rbind(p_combos, c(0.80,0.10,0.10))
+
+nrow(p_combos)
+
+colnames(p_combos) = c("p_CT1","p_CT2","p_CT3")
+rownames(p_combos) = str_c("pc_",1:nrow(p_combos))
+
+save(p_combos, file = "Simulated_Output/Probability_Combinations_Sim.RData")
 
 # Specify number of mixture replicates per probability combination
-# mix_rep = 20
-mix_rep = 2
-rep_label = str_c("0",1:9,10:mix_rep)
+mix_rep = 20
+rep_labels = c(str_c("0",1:9),10:mix_rep)
 
 # Specify total read counts for mixture replicates
 set.seed(seeds[12])
 total_cts_mix = matrix(rnorm(n = nrow(p_combos)*mix_rep, mean = 7*10^6, sd = 10^6), 
                        nrow = mix_rep, ncol = nrow(p_combos))
 colnames(total_cts_mix) = str_c("pc_",1:nrow(p_combos))
-rownames(total_cts_mix) = str_c("rep_",1:mix_rep)
+rownames(total_cts_mix) = str_c("rep_",rep_labels)
 
 # Create mixture samples
 mix_labels = matrix(NA, nrow = mix_rep, ncol = nrow(p_combos))
 for(p in 1:nrow(p_combos)){
-  mix_labels[,p] = str_c("Mixture_ProbCombo_",p,"_Replicate_",rep_label,"_counts")
+  mix_labels[,p] = str_c("Mixture_ProbCombo_",p,"_Replicate_",rep_labels,"_counts")
 }
 
-mix_creation(set_mixSim = set_mixSim, out_folder = "Human_Materials/Mixture Sample Counts",
+dim(mix_labels)
+
+mix_creation(set_mixSim = set_mixSim, out_folder = "Simulated_Output/Mixture Sample Counts",
              file_labels = mix_labels, total_cts = total_cts_mix, probs = p_combos, seed = seeds[13])
 ```
 
@@ -366,13 +394,20 @@ For the purposes of this simulation, we will assume that the fragment length dis
 ```{r}
 # fragLens_labels = matrix(NA, nrow = mix_rep, ncol = nrow(p_combos))
 # for(p in 1:nrow(p_combos)){
-#   fragLens_labels[,p] = str_c("Mixture_ProbCombo_",p,"_Replicate_", rep_label, "_fraglens")
+#   fragLens_labels[,p] = str_c("Mixture_ProbCombo_",p,"_Replicate_", rep_labels, "_fraglens")
 # }
 
-fragLens_out(total_reads = 10^7, mean = 300, SD = 50, lenMax = 600, 
-             out_folder = "Human_Materials",
-             file_names = "sim_fraglens.txt",
-             seed = seeds[14])
+fragLens_out = function(total_reads = 2*10^7, mean = 300, SD = 50, lenMin = 150, lenMax = 600,
+                        out_file, seed){
+  # fragLens_dist() in geneModel_code/fragLens_dist.cpp file
+  freq_dist = fragLens_dist(total_reads, mean, SD, lenMin, lenMax)
+  freq_dist = freq_dist[which(freq_dist[,1] > 0),]
+  write.table(freq_dist, file = out_file, col.names = F, row.names = F)
+}
+
+fragLens_out(total_reads = 2*10^7, mean = 300, SD = 50, lenMin = 150, lenMax = 600,
+             out_file = "Simulated_Output/sim_fraglens.txt", seed = seeds[14])
+
 ```
 
 The End
