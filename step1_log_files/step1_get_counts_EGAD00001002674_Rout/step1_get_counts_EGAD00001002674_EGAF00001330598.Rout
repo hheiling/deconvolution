@@ -1,0 +1,293 @@
+
+R version 3.6.0 (2019-04-26) -- "Planting of a Tree"
+Copyright (C) 2019 The R Foundation for Statistical Computing
+Platform: x86_64-pc-linux-gnu (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+> 
+> library(Rsamtools)
+Loading required package: GenomeInfoDb
+Loading required package: BiocGenerics
+Loading required package: parallel
+
+Attaching package: ‘BiocGenerics’
+
+The following objects are masked from ‘package:parallel’:
+
+    clusterApply, clusterApplyLB, clusterCall, clusterEvalQ,
+    clusterExport, clusterMap, parApply, parCapply, parLapply,
+    parLapplyLB, parRapply, parSapply, parSapplyLB
+
+The following objects are masked from ‘package:stats’:
+
+    IQR, mad, sd, var, xtabs
+
+The following objects are masked from ‘package:base’:
+
+    anyDuplicated, append, as.data.frame, basename, cbind, colnames,
+    dirname, do.call, duplicated, eval, evalq, Filter, Find, get, grep,
+    grepl, intersect, is.unsorted, lapply, Map, mapply, match, mget,
+    order, paste, pmax, pmax.int, pmin, pmin.int, Position, rank,
+    rbind, Reduce, rownames, sapply, setdiff, sort, table, tapply,
+    union, unique, unsplit, which, which.max, which.min
+
+Loading required package: S4Vectors
+Loading required package: stats4
+
+Attaching package: ‘S4Vectors’
+
+The following object is masked from ‘package:base’:
+
+    expand.grid
+
+Loading required package: IRanges
+Loading required package: GenomicRanges
+Loading required package: Biostrings
+Loading required package: XVector
+
+Attaching package: ‘Biostrings’
+
+The following object is masked from ‘package:base’:
+
+    strsplit
+
+> library(GenomicFeatures)
+Loading required package: AnnotationDbi
+Loading required package: Biobase
+Welcome to Bioconductor
+
+    Vignettes contain introductory material; view with
+    'browseVignettes()'. To cite Bioconductor, see
+    'citation("Biobase")', and for packages 'citation("pkgname")'.
+
+> library(GenomicAlignments)
+Loading required package: SummarizedExperiment
+Loading required package: DelayedArray
+Loading required package: matrixStats
+
+Attaching package: ‘matrixStats’
+
+The following objects are masked from ‘package:Biobase’:
+
+    anyMissing, rowMedians
+
+Loading required package: BiocParallel
+
+Attaching package: ‘DelayedArray’
+
+The following objects are masked from ‘package:matrixStats’:
+
+    colMaxs, colMins, colRanges, rowMaxs, rowMins, rowRanges
+
+The following object is masked from ‘package:Biostrings’:
+
+    type
+
+The following objects are masked from ‘package:base’:
+
+    aperm, apply
+
+> library(stringr)
+> library(data.table)
+
+Attaching package: ‘data.table’
+
+The following objects are masked from ‘package:GenomicAlignments’:
+
+    first, last, second
+
+The following object is masked from ‘package:SummarizedExperiment’:
+
+    shift
+
+The following object is masked from ‘package:GenomicRanges’:
+
+    shift
+
+The following object is masked from ‘package:IRanges’:
+
+    shift
+
+The following objects are masked from ‘package:S4Vectors’:
+
+    first, second
+
+> 
+> args = commandArgs(trailingOnly=TRUE)
+> args
+[1] "dataset='EGAD00001002674'"  "sam_name='EGAF00001330598'"
+> 
+> if (length(args)==0) {
++   message("no argument is provided, using defaults\n")
++   dataset  = "EGAD00001002671"
++   sam_name = "EGAF00001331297"
++   gene_anno_dir  = "_prepare_gene_anno"
++   gene_anno_file = "exon_by_genes_gencode.v15.GRCh37.rds"
++   bed_file       = "gencode.v15.nonoverlap.exon.bed"
++ } else if(length(args)==2) {
++   message("two argument are provided, assume they are dataset and sam_name\n")
++   # dataset  = args[1]
++   # sam_name = args[2]
++   eval(parse(text=args[1]))
++   eval(parse(text=args[2]))
++   gene_anno_dir  = "_prepare_gene_anno"
++   gene_anno_file = "exon_by_genes_gencode.v15.GRCh37.rds"
++   bed_file       = "gencode.v15.nonoverlap.exon.bed"
++ }else if(length(args)==5){
++   # dataset  = args[1]
++   # sam_name = args[2]
++   # gene_anno_dir  = args[3]
++   # gene_anno_file = args[4]
++   # bed_file       = args[5]
++   for(k in 1:5){
++     eval(parse(text=args[k]))
++   }
++ }else{
++   stop("unexpected number of arguments")
++ }
+two argument are provided, assume they are dataset and sam_name
+
+> 
+> # workDir   = "/Users/wsun/research/data/EGA"
+> # resultDir = file.path(workDir, paste0(dataset, "_result"))
+> 
+> workDir   = "/fh/scratch/delete90/sun_w/plittle/CS_eQTL/s5_EGA"
+> resultDir = file.path("/fh/scratch/delete90/sun_w/EGA", paste0(dataset, "_result"))
+> 
+> readLen   = 100
+> 
+> gene_anno_file = file.path(gene_anno_dir, gene_anno_file)
+> bed_file = file.path(gene_anno_dir, bed_file)
+> 
+> print(sprintf("sam_name: %s", sam_name))
+[1] "sam_name: EGAF00001330598"
+> 
+> # ------------------------------------------------------------------------
+> # read in sample information
+> # ------------------------------------------------------------------------
+> 
+> meta = readRDS("data/blueprint_meta_info.rds")
+> dim(meta)
+[1] 614  64
+> meta[1:2,]
+    EXPERIMENT_ID  STUDY_ID CENTER_NAME SAMPLE_ID SAMPLE_NAME
+58      ERX348387 ERP001664       MPIMG ERS208284    S000GZB1
+130     ERX358031 ERP001664       MPIMG ERS208283    S000GZB5
+    INSTRUMENT_PLATFORM    INSTRUMENT_MODEL    LIBRARY_NAME
+58             ILLUMINA Illumina HiSeq 2000 I_bc_pelib_1913
+130            ILLUMINA Illumina HiSeq 2000 I_bc_pelib_1953
+                                       EXPERIMENT_ALIAS LIBRARY_LAYOUT
+58   ena-EXPERIMENT-BLUEPRINT-28-11-2013-11:05:48:045-6         SINGLE
+130 ena-EXPERIMENT-BLUEPRINT-09-12-2013-12:11:50:625-62         SINGLE
+    LIBRARY_STRATEGY EXPERIMENT_TYPE READ_QUALITIES  MOLECULE
+58           RNA-Seq   total-RNA-Seq          phred total RNA
+130          RNA-Seq   total-RNA-Seq          phred total RNA
+                                                                        SAMPLE_ONTOLOGY_URI
+58  http://purl.obolibrary.org/obo/CL_0000096;http://purl.obolibrary.org/obo/UBERON_0013756
+130 http://purl.obolibrary.org/obo/CL_0002057;http://purl.obolibrary.org/obo/UBERON_0013756
+    DISEASE_ONTOLOGY_URI DISEASE       BIOMATERIAL_PROVIDER BIOMATERIAL_TYPE
+58                  <NA>    None NIHR Cambridge BioResource     Primary Cell
+130                 <NA>    None NIHR Cambridge BioResource     Primary Cell
+                                          CELL_TYPE DONOR_AGE
+58                                mature neutrophil   50 - 55
+130 CD14-positive, CD16-negative classical monocyte   50 - 55
+    DONOR_HEALTH_STATUS DONOR_SEX DONOR_ETHNICITY  TISSUE_TYPE
+58                 <NA>      Male            <NA> venous blood
+130                <NA>      Male            <NA> venous blood
+    DONOR_REGION_OF_RESIDENCE SPECIMEN_PROCESSING SAMPLE_DESC_1
+58                East Anglia               fresh  venous blood
+130               East Anglia               fresh  venous blood
+                                      SAMPLE_DESC_3
+58                                mature neutrophil
+130 CD14-positive, CD16-negative classical monocyte
+                            CHECKSUM EXPERIMENT_STATUS
+58  90f3eefaa33499d3a95874de078641e0           private
+130 5d1643c6521e2ed9877d0545a01af41f           private
+                                                                                                    STUDY_NAME
+58  BLUEPRINT RNA-seq data for common cells in the haematopoietic lineages, from adult and cord blood samples.
+130 BLUEPRINT RNA-seq data for common cells in the haematopoietic lineages, from adult and cord blood samples.
+    FIRST_SUBMISSION_DATE SEQ_RUNS_COUNT SAMPLE_STATUS READ_STRAND CELL_LINE
+58   28-NOV-2013 11:05:52              1       private   Antisense         -
+130  09-DEC-2013 12:11:56              1       private   Antisense         -
+    DONOR_ID TISSUE_DEPOT POOL_ID POOLED_DONOR_IDS GENETIC_CHARACTERISTICS
+58    S000GZ            -       -                -                       -
+130   S000GZ            -       -                -                       -
+    TREATMENT TWIN_PAIR_ID SPECIMEN_STORAGE SAMPLE_DESC_2      DATASET_ID
+58          -            -             <NA>        S000GZ EGAD00001002675
+130         -            -             <NA>        S000GZ EGAD00001002674
+                                                                                                                                                                                            DATASET_TITLE
+58                                Blueprint: A human variation panel of genetic influences on epigenomes and transcriptomes in three immune cell types, (RNA-Seq for mature neutrophil, on genome GRCh37)
+130 Blueprint: A human variation panel of genetic influences on epigenomes and transcriptomes in three immune cell types, (RNA-Seq for CD14-positive, CD16-negative classical monocyte, on genome GRCh37)
+                                                                                                                                                                                                                                                                                          DATASET_DESCRIPTION
+58                                RNA-Seq data for 205 mature neutrophil sample(s). 205 run(s), 205 experiment(s), 205 analysis(s) on human genome GRCh37. Analysis documentation available at http://ftp.ebi.ac.uk/pub/databases/blueprint/blueprint_Epivar/protocols/README_rnaseq_analysis_sanger_20160816
+130 RNA-Seq data for 197 CD14-positive, CD16-negative classical monocyte sample(s). 197 run(s), 197 experiment(s), 197 analysis(s) on human genome GRCh37. Analysis documentation available at http://ftp.ebi.ac.uk/pub/databases/blueprint/blueprint_Epivar/protocols/README_rnaseq_analysis_sanger_20160816
+    FILETYPE CHECKSUM_METHOD            EGAF V2   filesize
+58       bam             MD5 EGAF00001330389  1 6343741608
+130      bam             MD5 EGAF00001330530  1 8169832797
+                                                                                      filename
+58                                                                     EGAF00001330389.bam.cip
+130 EGAZ00001234525_release_wp10_20160822_S000GZB5.total_RNA.STAR_wtsi.GRCh37.20150724.bam.cip
+       RUN_ID      EGA_RUN_ID EGA_EXPERIMENT_ID  EGA_DATASET_ID
+58  ERR376010 EGAR00001149125   EGAX00001144650 EGAD00001002675
+130 ERR385785 EGAR00001155928   EGAX00001151322 EGAD00001002674
+    CULTURE_CONDITIONS LINEAGE DIFFERENTIATION_STAGE MEDIUM FILE_TYPE
+58                          NA                    NA     NA     fastq
+130                         NA                    NA     NA     fastq
+> 
+> table(meta$LIBRARY_LAYOUT, meta$DATASET_ID)
+        
+         EGAD00001002671 EGAD00001002674 EGAD00001002675
+  PAIRED             209               3               9
+  SINGLE               3             194             196
+> 
+> w2do = which(meta$EGAF == sam_name)
+> w2do
+[1] 318
+> 
+> bam_files = list.files(file.path(workDir, dataset, sam_name), pattern=".bam$")
+> bam_files
+[1] "S00NRWB4.total_RNA.STAR_wtsi.GRCh37.20150724.bam"
+> meta$filename[w2do]
+[1] "EGAZ00001234604_release_wp10_20160822_S00NRWB4.total_RNA.STAR_wtsi.GRCh37.20150724.bam.cip"
+> 
+> mat1 = str_detect(meta$filename[w2do], bam_files)
+> if(sum(mat1) != 1){ stop("non-unique match") }
+> 
+> bam_file = file.path(workDir, dataset, sam_name, bam_files[mat1])
+> bam_filtered   = gsub(".bam$", "_filtered.bam", bam_file)
+> 
+> bam_file
+[1] "/fh/scratch/delete90/sun_w/plittle/CS_eQTL/s5_EGA/EGAD00001002674/EGAF00001330598/S00NRWB4.total_RNA.STAR_wtsi.GRCh37.20150724.bam"
+> singleEnd = meta$LIBRARY_LAYOUT[w2do]
+> singleEnd
+[1] "SINGLE"
+> 
+> # ------------------------------------------------------------------------
+> # counting
+> # ------------------------------------------------------------------------
+> 
+> ct1 = countBam(bam_file)
+> print("done with first counting!\n")
+[1] "done with first counting!\n"
+> 
+> ct1$nucleotides/ct1$records
+[1] 94.91952
+> 
+> if(abs(ct1$nucleotides/ct1$records - readLen) > 5){
++   stop("looks like readLen is not expected!")
++ }
+Error: looks like readLen is not expected!
+Execution halted

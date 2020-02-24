@@ -1,6 +1,6 @@
 
 workDir   = "/fh/scratch/delete90/sun_w/plittle/CS_eQTL/s5_EGA"
-dataset   = "EGAD00001002671"
+dataset   = "EGAD00001002675"
 sam_names = list.files(file.path(workDir, dataset), pattern="EGAF")
 length(sam_names)
 sam_names[1:5]
