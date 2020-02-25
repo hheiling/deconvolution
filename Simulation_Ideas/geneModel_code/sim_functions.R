@@ -70,12 +70,20 @@ diff_genes = function(CT1_counts, nTE_filtered, num_diff = 200, seed){
     stop("Number of genes selected for differential expression must divisible by 4")
   }
   
-  # Find genes from CT1 output with counts above first quartile of counts
-  q1 = apply(CT1_counts, 2, function(x) quantile(x, probs = 0.25))
-  above_q1 = ifelse(CT1_counts > q1, 1, 0)
+  counts_subset = CT1_counts[which(gene_names %in% nTE_filtered$geneId),]
+  genes_nT_limit = nTE_filtered$geneId[which(nTE_filtered$nT <= 11)]
+  counts_subset2 = counts_subset[which(rownames(counts_subset) %in% genes_nT_limit),]
+  
+  # cat("Number genes with number isoforms <= 11: ", nrow(counts_subset2), "\n")
+  
+  # Find genes of interest from CT1 output with counts above first p20 of counts (wrt 1000 genes of interest)
+  q1 = apply(counts_subset2, 2, function(x) quantile(x, probs = 0.20))
+  above_q1 = ifelse(counts_subset2 > q1, 1, 0)
   
   # Select genes for differential expression
-  gene_choices = gene_names[which(rowSums(above_q1) == n)]
+  gene_choices = rownames(counts_subset)[which(rowSums(above_q1) == n)]
+  # cat("number of gene_choices after expression level and isoform number selection: ", 
+  #     length(gene_choices), "\n")
   all_diff = sample(gene_choices, num_diff, replace = F)
   diffExp = sample(all_diff, num_diff/2, replace = F)
   diffUsg = all_diff[-which(all_diff %in% diffExp)]
