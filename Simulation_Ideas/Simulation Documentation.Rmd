@@ -38,7 +38,7 @@ Load the materials created in previous documentation that will be needed for the
 * isoAll: known isoforms object for human data. When loaded, this object is a list where each component is a binary matrix that specifies a set of possible isoforms (e.g., isoforms from annotations). Specifically, it is a binary matrix of k rows and m columns, where k is the number of 
 non-overlapping exons and m is the number of isoforms. isoforms[i,j]=1 indicates that the i-th exon belongs to the j-th isoform. For example, the following matrix indicates the three isoforms for one gene ENSMUSG00000000003:
 
-\verb{
+```
      ENSMUST00000000003 ENSMUST00000166366 ENSMUST00000114041
 [1,]                  1                  1                  1
 [2,]                  1                  1                  1
@@ -48,7 +48,7 @@ non-overlapping exons and m is the number of isoforms. isoforms[i,j]=1 indicates
 [6,]                  1                  1                  1
 [7,]                  1                  1                  1
 [8,]                  1                  0                  0
-}
+```
 
 Instructions for creating such an RData object can be found in the Create_BED_knownIsoforms_Files directory in the GitHub repo hheiling/deconvolution, <https://github.com/hheiling/deconvolution>
 
@@ -77,6 +77,7 @@ load("Human_Materials/Homo_sapiens.GRCh37.66.other.geneInfo.RData")
 Needed libraries
 
 ```{r}
+library(MASS)
 library(DirichletReg)
 library(stringr)
 library(Rcpp)
@@ -88,7 +89,10 @@ Source relevent functions needed for simulations in "Simulation_Ideas/geneModel_
 
 ```{r}
 source("geneModel_code/sim_functions.R")
-sourceCpp("geneModel_code/fragLens_dist.cpp")
+```
+
+```{r, eval=FALSE}
+sourceCpp(file = "geneModel_code/fragLens_dist.cpp")
 ```
 
 Generate random seeds to be used in the simulation
@@ -144,6 +148,10 @@ Select genes for differential expression (100 of 1000) and differential isoform 
 #     differential isoform usage (1) or not (0). Rownames correspond to gene names
 diffGeneInfo = diff_genes(CT1_counts = geneInfo$ct_mat[,1:n], nTE_filtered = nTE_filtered, 
                           num_diff = 200, seed = seeds[3])
+
+# Check that chosen genes for diff exp and diff iso usage came from nTE_filtered genes
+sum(rownames(diffGeneInfo[which(diffGeneInfo[,"diffExp"] == 1),]) %in% nTE_filtered$geneId)
+sum(rownames(diffGeneInfo[which(diffGeneInfo[,"diffUsg"] == 1),]) %in% nTE_filtered$geneId)
 ```
 
 Specify and apply fold changes to gene counts for genes specified to have differential expression in one of the cell types (Cell Type 2). A random component was introduced to the fold change so there is some variation across samples.
@@ -160,8 +168,12 @@ geneCtDiffExp = diff_exp(gene_counts = geneInfo$ct_mat, n = n, J = J,
 genesDiffExp = rownames(diffGeneInfo[which(diffGeneInfo[,"diffExp"] == 1),])
 # differential isoform usage
 genesDiffUsage = rownames(diffGeneInfo[which(diffGeneInfo[,"diffUsg"] == 1),])
-# save results 
+# save results in data.frame
 genes_df = data.frame(diffExp = genesDiffExp, diffUsg = genesDiffUsage)
+
+```
+
+```{r, eval=FALSE}
 save(genes_df, file = "Simulated_Output/genes_simulated_w_diffExp_diffUsg.RData")
 ```
 
@@ -229,6 +241,9 @@ iso_exon_1000[["CT3"]] = iso_exon_info(genes_info = geneCtDiffExp[,(2*n+1):(3*n)
                                        alphaRange = c(20,50),
                                        EffLen_info = X_info, seed = seeds[7])
 
+```
+
+```{r, eval=FALSE}
 save(iso_exon_1000, file = "Simulated_Output/Iso_Exon_Params_1000.RData")
 ```
 
@@ -284,12 +299,15 @@ files1 = str_c("CT1_ref_",rep_pure,"_counts")
 files2 = str_c("CT2_ref_",rep_pure,"_counts")
 files3 = str_c("CT3_ref_",rep_pure,"_counts")
 
+```
+
+```{r, eval=FALSE}
 counts_output(exonInfo_1000 = iso_exon_1000, exonInfo_other = iso_exon_other,
               theta = geneInfo$theta,
               file_labels = c(files1, files2, files3),
-              folder = "Simulated_Output/Pure Sample Counts", seed = seeds[11])
-
+              folder = "Simulated_Output/Pure_Sample_Counts", seed = seeds[11])
 ```
+
 
 ## Create Mixture Samples
 
@@ -310,6 +328,8 @@ Calculate the ratio of `total_cts_mix` / `total_cts_ref` for each reference cell
 Multiply all resulting exon set values by the proportion assigned to the cell type.
 
 Round all of these resulting exon set values, and add them up across the cell types within exon sets.
+
+Specifying the samples to use for mixture file creation and IsoDeconv fit and the probability combinations to use:
 
 ```{r}
 CT1_files = list.files(path = "Simulated_Output/Pure Sample Counts/", pattern = "^CT1",
@@ -332,11 +352,11 @@ set_mixSim[["CT1"]] = CT1_files_mixSim
 set_mixSim[["CT2"]] = CT2_files_mixSim
 set_mixSim[["CT3"]] = CT3_files_mixSim
 
-# Goal: have all probabilities be between (0.1,0.8)
-p_CT1 = seq(from = 0.1, to = 0.8, by = 0.05)
+# Calculate probability combinations to use in simulations
+p_CT1 = seq(from = 0.1, to = 0.8, by = 0.10)
 
 for(p in 1:(length(p_CT1) - 1)){
-  p_CT2 = seq(from = 0.10, to = (1-0.1-p_CT1[p]), by = 0.05)
+  p_CT2 = seq(from = 0.10, to = (1-0.1-p_CT1[p]), by = 0.10)
   
   num_combos = length(p_CT2)
   if(p == 1){
@@ -359,14 +379,23 @@ p_combos = rbind(p_combos, c(0.80,0.10,0.10))
 
 nrow(p_combos)
 
-colnames(p_combos) = c("p_CT1","p_CT2","p_CT3")
+colnames(p_combos) = c("CT1","CT2","CT3")
 rownames(p_combos) = str_c("pc_",1:nrow(p_combos))
 
-save(p_combos, file = "Simulated_Output/Probability_Combinations_Sim.RData")
+```
 
+```{r, eval=FALSE}
+save(p_combos, file = "Simulated_Output/Probability_Combinations_Sim.RData")
+```
+
+The mixture files will be created during the simulation process and then deleted to save space. However, here is an example of mixture file creation for demonstration.
+
+In the simulation, the number of mixture replicates per probabiltiy combination will be 20. I reduced number of 5 is used here for illustration.
+
+```{r}
 # Specify number of mixture replicates per probability combination
-mix_rep = 20
-rep_labels = c(str_c("0",1:9),10:mix_rep)
+mix_rep = 5
+rep_labels = str_c("0",1:mix_rep)
 
 # Specify total read counts for mixture replicates
 set.seed(seeds[12])
@@ -383,15 +412,21 @@ for(p in 1:nrow(p_combos)){
 
 dim(mix_labels)
 
-mix_creation(set_mixSim = set_mixSim, out_folder = "Simulated_Output/Mixture Sample Counts",
-             file_labels = mix_labels, total_cts = total_cts_mix, probs = p_combos, seed = seeds[13])
+
+```
+
+```{r, eval=FALSE}
+# Simulating mixture counts for first probability combination:
+mix_creation2(set_mixSim = set_mixSim, out_folder = "Simulated_Output/Mixture Sample Counts",
+             file_labels = mix_labels[,1], total_cts = total_cts_mix[,p], probs = p_combos[p,], 
+             seed = seeds[13])
 ```
 
 ## Create Fragment length files for mixtures samples
 
 For the purposes of this simulation, we will assume that the fragment length distribution is the same across all samples. Therefore, in an attempt to simplify the number of files created and used for the simulation, only one fragment length distribution file will be created. This file will be recycled for all `IsoDeconvMM` fit procedures for all mixture samples.
 
-```{r}
+```{r, eval=FALSE}
 # fragLens_labels = matrix(NA, nrow = mix_rep, ncol = nrow(p_combos))
 # for(p in 1:nrow(p_combos)){
 #   fragLens_labels[,p] = str_c("Mixture_ProbCombo_",p,"_Replicate_", rep_labels, "_fraglens")
