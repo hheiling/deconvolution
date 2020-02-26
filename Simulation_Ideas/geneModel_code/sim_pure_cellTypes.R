@@ -1,6 +1,9 @@
 
 # Create pure cell type reference files
 
+library(MASS)
+library(stringr)
+
 # Load needed materials
 
 header1 = "/home/hheiling_unc_edu/"
@@ -15,14 +18,12 @@ prefix_HM = str_c(header1,"deconvolution/Simulation_Ideas/Human_Materials")
 prefix_code = str_c(header1,"deconvolution/Simulation_Ideas/geneModel_code")
 
 # Load iso_exon_1000
-load(file = "%s/Iso_Exon_Params_1000.RData", prefix_sim_out)
+load(file = sprintf("%s/Iso_Exon_Params_1000.RData", prefix_sim_out))
 # Load iso_exon_other
 load(file = sprintf("%s/Iso_Exon_Counts_Other.RData", prefix_sim_out))
 # Load geneInfo
 load(file = sprintf("%s/initial_geneInfo.RData", prefix_sim_out))
 
-library(MASS)
-library(stringr)
 # rnegbin(n = number of sample values, mu = vector of means, theta = vector of theta parameters or scalar that is recycled)
 
 # Simulate and record exon set counts 
