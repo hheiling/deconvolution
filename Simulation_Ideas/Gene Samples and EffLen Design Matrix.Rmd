@@ -32,7 +32,6 @@ library(gtools)
 # Load IsoDeconvMM library:
 # library(remotes)
 # install_github("hheiling/IsoDeconvMM", force = TRUE)
-# library(IsoDeconvMM)
 library(IsoDeconvMM)
 
 # Load isoAll object form knownIsoforms file
@@ -159,7 +158,7 @@ Based on the above information, we chose genes belonging to chromosomes 1 to 9, 
 
 Now, we will fit a Dirichlet distribution to these genes.
 
-```{r}
+```{r, eval=FALSE}
 # Use counts in eDat_subset to fit a Dirichlet distribution for these genes
 
 # install.packages("DirichletReg")
@@ -180,7 +179,7 @@ gene_alpha = fit_dir$alpha[1,]
 
 Save Dirichlet results
 
-```{r}
+```{r, eval=FALSE}
 library(stringr)
 
 split_names = str_split_fixed(names(gene_alpha), "\\.", n = 2)
@@ -430,8 +429,12 @@ cts = rep(1, times = length(exon_vec))
 
 mock_counts = data.frame(cts, exon_vec)
 
+```
+
+```{r, eval=FALSE}
 write.table(mock_counts, file = "Human_Materials/mock_counts.txt", col.names = F, row.names = F)
 ```
+
 
 Examine mock counts output
 
@@ -492,7 +495,7 @@ The output is a list with a list element for each cluster. For each cluster, the
 
 Source code files used to calculate effective length design matrix X:
 
-```{r, eval=FALSE}
+```{r}
 code_files = c("IsoDeconv_Step1.R","dev_compiled_geneMod2.R","geneModel_X.R")
 for(f in code_files){
   source(sprintf("geneModel_code/%s",f))
@@ -514,22 +517,22 @@ X_info = IsoDeconv_Step1(directory = sprintf("%s/Human_Materials", prefix),
                          discrim_genes = nTE_filtered$geneId,
                          readLen = 75, lmax = 600, eLenMin = 0)
 
-print(" ")
-length(X_info)
-# names(X_info)
-
 
 ```
 
 Save results
 
-```{r}
+```{r, eval=FALSE}
 save(X_info, file = "Human_Materials/Effective Length Design Matrices.RData")
 ```
 
 Examination of output:
 
 ```{r}
+# Load the effective length info
+load(file = "Human_Materials/Effective Length Design Matrices.RData")
+# Number of clusters selected
+length(X_info)
 # clusters considered
 head(names(X_info))
 # Names of output per cluster
