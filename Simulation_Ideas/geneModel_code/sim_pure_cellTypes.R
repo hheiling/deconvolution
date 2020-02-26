@@ -41,10 +41,12 @@ files3 = str_c("CT3_ref_",rep_pure,"_counts")
 set.seed(2020)
 seeds = sample(1000:9999, size = 50, replace = F)
 
+source(sprintf("%s/sim_functions.R",prefix_code))
+
 counts_output(exonInfo_1000 = iso_exon_1000, exonInfo_other = iso_exon_other,
               theta = geneInfo$theta,
               file_labels = c(files1, files2, files3),
-              folder = prefix_files, seed = seeds[11])
+              folder = prefix_pure, seed = seeds[11])
 
 
 
