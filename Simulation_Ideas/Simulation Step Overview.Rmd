@@ -169,7 +169,7 @@ $T_g = \sum_e \mu_{ge} = r_g \sum_e (X_g \rho_g) \rightarrow r_g = \frac{T_g}{\s
 
 ### Details to Simulate Exon Set NegBin Means and Counts
 
-1. If we simulate isoform probability distribution parameters as described in the "Gene Cluster to Isoform Parameters" section, we can calculate the $\beta_g$ parameters by calculating $\r_g = \frac{T_g}{\sum_e (X_g \rho_g)}$ and then calculating $\beta_g = \rho_g r_g$.
+1. If we simulate isoform probability distribution parameters as described in the "Gene Cluster to Isoform Parameters" section, we can calculate the $\beta_g$ parameters by calculating $r_g = \frac{T_g}{\sum_e (X_g \rho_g)}$ and then calculating $\beta_g = \rho_g r_g$.
 
 2. Perform the matrix multiplication $X_g \beta_g$ to get the vector $\mu_g$. Each element of this vector will be the negative binomial mean parameter for each possible exon set. 
 
