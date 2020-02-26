@@ -61,7 +61,7 @@ print(CT_ref_files)
 
 pure_ref_files = cbind(CT_ref_files, c(rep("CT1",times=n/2),rep("CT2",times=n/2),rep("CT3",times=n/2)))
 
-dim(pure_ref_files)
+cat("dim pure_ref_files: ",dim(pure_ref_files),"\n")
 
 # Use replicates 11 through 20 for mixture file creation
 CT1_files_mixSim = CT1_files[(n/2 + 1):n]
@@ -80,7 +80,7 @@ fraglens_file = list.files(path = prefix_sim_out, pattern = "fraglens", full.nam
 # Load probability combinations: p_combos
 load(file = sprintf("%s/Probability_Combinations_Sim.RData", prefix_sim_out))
 
-nrow(p_combos)
+cat("Num prob combos: ",nrow(p_combos), "\n")
 
 colnames(p_combos) = c("CT1","CT2","CT3")
 rownames(p_combos) = str_c("pc_", c(str_c("0",1:9),10:nrow(p_combos)))
@@ -100,7 +100,8 @@ names(total_cts_mix) = pc_labels
 # Create mixture samples
 mix_labels = str_c("Mix_ProbCombo_",str_remove(pc_labels,"pc_"),"_counts")
 
-length(mix_labels)
+cat("length of mix_labels:",length(mix_labels),"\n")
+cat("First mix_label:",mix_labels[1],"\n")
 
 batch_cut = list(1:18,19:nrow(p_combos))
 
@@ -123,7 +124,7 @@ for(batch in length(batch_cut)){
   
   # Create mixture files
   mix_creation2(set_mixSim = set_mixSim, out_folder = prefix_mix,
-               file_labels = mix_labels[pc_num], total_cts = total_cts_mix[pc_nums], 
+               file_labels = mix_labels[pc_nums], total_cts = total_cts_mix[pc_nums], 
                probs = p_combos[pc_nums,], seed = seeds[batch])
   
   mix_files = list.files(path = prefix_mix, pattern = "counts.txt",
