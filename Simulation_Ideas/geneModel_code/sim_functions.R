@@ -71,19 +71,20 @@ diff_genes = function(CT1_counts, nTE_filtered, num_diff = 200, seed){
   }
   
   counts_subset = CT1_counts[which(gene_names %in% nTE_filtered$geneId),]
-  genes_nT_limit = nTE_filtered$geneId[which(nTE_filtered$nT <= 11)]
-  counts_subset2 = counts_subset[which(rownames(counts_subset) %in% genes_nT_limit),]
+  genes_nT_limit = nTE_filtered$geneId[which(nTE_filtered$nT <= 15)]
   
-  # cat("Number genes with number isoforms <= 11: ", nrow(counts_subset2), "\n")
-  
-  # Find genes of interest from CT1 output with counts above first p20 of counts (wrt 1000 genes of interest)
-  q1 = apply(counts_subset2, 2, function(x) quantile(x, probs = 0.20))
-  above_q1 = ifelse(counts_subset2 > q1, 1, 0)
+  # Find genes of interest from CT1 output with counts above first p25 of counts (wrt 1000 genes of interest)
+  q1 = apply(counts_subset, 2, function(x) quantile(x, probs = 0.25))
+  above_q1 = matrix(NA, nrow = nrow(counts_subset), ncol = ncol(counts_subset))
+  for(j in 1:ncol(counts_subset)){
+    above_q1[,j] = ifelse(counts_subset[,j] > q1[j], 1, 0)
+  }
+  gene_expCut = rownames(counts_subset)[which(rowSums(above_q1) >= n*0.9)]
   
   # Select genes for differential expression
-  gene_choices = rownames(counts_subset)[which(rowSums(above_q1) == n)]
-  # cat("number of gene_choices after expression level and isoform number selection: ", 
-  #     length(gene_choices), "\n")
+  gene_choices = intersect(gene_expCut,genes_nT_limit)
+  cat("number of gene_choices after expression level and isoform number restriction: ",
+      length(gene_choices), "\n")
   all_diff = sample(gene_choices, num_diff, replace = F)
   diffExp = sample(all_diff, num_diff/2, replace = F)
   diffUsg = all_diff[-which(all_diff %in% diffExp)]
@@ -534,15 +535,14 @@ mix_creation2 = function(set_mixSim, out_folder, file_labels, total_cts, probs, 
   set.seed(seed)
   
   # Define variables
-  ## Number mixture replicates to create
-  mix_rep = length(total_cts)
+  
   ## Number cell types
-  J = length(probs)
+  J = ncol(probs)
   ## Number pure reference samples per cell type (assume equal across all cell types)
   M = length(set_mixSim[[1]])
   
   # Checks
-  if(sum(probs) != 1){
+  if(any(rowSums(probs) != 1)){
     stop("probs must add to 1")
   }
   
@@ -564,69 +564,61 @@ mix_creation2 = function(set_mixSim, out_folder, file_labels, total_cts, probs, 
   # Number exon sets (assume equal across all pure reference samples)
   E = length(exon_sets)
   
-  # for(k in 1:nrow(probs)){
-  #   # Identify prob vector
-  #   p = probs[k,]
-  #   # Randomly select counts files from each cell type
-  #   pure_counts = matrix(NA, nrow = E, ncol = J)
-  #   for(j in 1:J){
-  #     counts_vec = df_list[[j]][[sample(1:M, size = 1)]]$count
-  #     pure_counts[,j] = counts_vec
-  #   }
-  #   
-  #   # Calculate ratio of total counts between mixture replicate and pure reference counts
-  #   cts_Ratio = matrix(NA, nrow = mix_rep, ncol = J)
-  #   for(rep in 1:mix_rep){
-  #     cts_Ratio[rep,] = total_cts[rep,k] / colSums(pure_counts)
-  #   }
-  #   
-  #   # Multiply p and cts_Ratio to appropriate columns of pure_counts to get mixture sample components
-  #   ## Round results and add results across exon sets
-  #   mixture = list()
-  #   for(rep in 1:mix_rep){
-  #     mix_components = pure_counts * matrix(p, nrow = nrow(pure_counts), ncol = J, byrow = T) *
-  #       matrix(cts_Ratio[rep,], nrow = nrow(pure_counts), ncol = J, byrow = T)
-  #     mixture[[rep]] = rowSums(round(mix_components))
-  #   }
-  #   
-  #   # Save mixture results in counts.txt files
-  #   for(rep in 1:mix_rep){
-  #     label = file_labels[rep,k]
-  #     df_mix = data.frame(count = mixture[[rep]], exons = exon_sets)
-  #     write.table(df_mix, file = sprintf("%s/%s.txt", out_folder, label), col.names = F, row.names = F)
-  #   }
-  # }
-  
-  # Identify prob vector
-  p = probs
-  # Randomly select counts files from each cell type
-  pure_counts = matrix(NA, nrow = E, ncol = J)
-  for(j in 1:J){
-    counts_vec = df_list[[j]][[sample(1:M, size = 1)]]$count
-    pure_counts[,j] = counts_vec
-  }
+  for(k in 1:nrow(probs)){
+    # Identify prob vector
+    p = probs[k,]
+    # Randomly select counts files from each cell type
+    pure_counts = matrix(NA, nrow = E, ncol = J)
+    for(j in 1:J){
+      counts_vec = df_list[[j]][[sample(1:M, size = 1)]]$count
+      pure_counts[,j] = counts_vec
+    }
 
-  # Calculate ratio of total counts between mixture replicate and pure reference counts
-  cts_Ratio = matrix(NA, nrow = mix_rep, ncol = J)
-  for(rep in 1:mix_rep){
-    cts_Ratio[rep,] = total_cts[rep,k] / colSums(pure_counts)
-  }
+    # Calculate ratio of total counts between mixture sample and pure reference counts
+    cts_Ratio = total_cts[k] / colSums(pure_counts)
+    
+    # Multiply p and cts_Ratio to appropriate columns of pure_counts to get mixture sample components
+    mix_componenets = mix_components = pure_counts * matrix(p, nrow = nrow(pure_counts), ncol = J, byrow = T) *
+      matrix(cts_Ratio, nrow = nrow(pure_counts), ncol = J, byrow = T)
+    mixture = rowSums(round(mix_components))
 
-  # Multiply p and cts_Ratio to appropriate columns of pure_counts to get mixture sample components
-  ## Round results and add results across exon sets
-  mixture = list()
-  for(rep in 1:mix_rep){
-    mix_components = pure_counts * matrix(p, nrow = nrow(pure_counts), ncol = J, byrow = T) *
-      matrix(cts_Ratio[rep,], nrow = nrow(pure_counts), ncol = J, byrow = T)
-    mixture[[rep]] = rowSums(round(mix_components))
-  }
-
-  # Save mixture results in counts.txt files
-  for(rep in 1:mix_rep){
-    label = file_labels[rep,k]
-    df_mix = data.frame(count = mixture[[rep]], exons = exon_sets)
+   # Save mixture results in counts.txt files
+    label = file_labels[k]
+    df_mix = data.frame(count = mixture, exons = exon_sets)
     write.table(df_mix, file = sprintf("%s/%s.txt", out_folder, label), col.names = F, row.names = F)
+    
   }
+  
+  # # Identify prob vector
+  # p = probs
+  # # Randomly select counts files from each cell type
+  # pure_counts = matrix(NA, nrow = E, ncol = J)
+  # for(j in 1:J){
+  #   counts_vec = df_list[[j]][[sample(1:M, size = 1)]]$count
+  #   pure_counts[,j] = counts_vec
+  # }
+  # 
+  # # Calculate ratio of total counts between mixture replicate and pure reference counts
+  # cts_Ratio = matrix(NA, nrow = mix_rep, ncol = J)
+  # for(rep in 1:mix_rep){
+  #   cts_Ratio[rep,] = total_cts[rep,k] / colSums(pure_counts)
+  # }
+  # 
+  # # Multiply p and cts_Ratio to appropriate columns of pure_counts to get mixture sample components
+  # ## Round results and add results across exon sets
+  # mixture = list()
+  # for(rep in 1:mix_rep){
+  #   mix_components = pure_counts * matrix(p, nrow = nrow(pure_counts), ncol = J, byrow = T) *
+  #     matrix(cts_Ratio[rep,], nrow = nrow(pure_counts), ncol = J, byrow = T)
+  #   mixture[[rep]] = rowSums(round(mix_components))
+  # }
+  # 
+  # # Save mixture results in counts.txt files
+  # for(rep in 1:mix_rep){
+  #   label = file_labels[rep,k]
+  #   df_mix = data.frame(count = mixture[[rep]], exons = exon_sets)
+  #   write.table(df_mix, file = sprintf("%s/%s.txt", out_folder, label), col.names = F, row.names = F)
+  # }
 
   
 }
