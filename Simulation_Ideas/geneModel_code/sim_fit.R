@@ -116,7 +116,7 @@ SimFull = list()
 
 cellTypes = c("CT1","CT2","CT3")
 
-for(batch in length(batch_cut)){
+for(batch in 1:length(batch_cut)){
   
   pc_nums = batch_cut[[batch]]
   
