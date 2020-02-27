@@ -112,6 +112,7 @@ batch_cut = list(1:18,19:nrow(p_combos))
 SimResults = list()
 SimSummary = list()
 EffLen_Mat = list()
+SimFull = list()
 
 cellTypes = c("CT1","CT2","CT3")
 
@@ -143,6 +144,8 @@ for(batch in length(batch_cut)){
                                 mix_names = mix_names, initPts = NULL,
                                 optim_options = optimControl(simple.Init = FALSE))
   
+  # Save all results for reference
+  SimFull[[batch]] = SimResults_Full
   
   # Save subset of results
   for(m in mix_names){
@@ -185,91 +188,6 @@ for(batch in length(batch_cut)){
 save(SimResults, file = sprintf("%s/IsoDeconvMM_Sim_Results_200GenesP100.RData", prefix_sim_out))
 save(SimSummary, file = sprintf("%s/IsoDeconvMM_Sim_Summary_200GenesP100.RData", prefix_sim_out))
 save(EffLen_Mat, file = sprintf("%s/EffLen_Mat_Record_Sim_200GenesP100.RData", prefix_sim_out))
-
-##########################################################################################################
-
-# Testing code before running simulation
-
-batch_cut = list(c(1:2))
-
-# Run simulations
-
-# Simulation 1: No initPts specified (default initPts = 1/J for all cell types)
-
-SimResults = list()
-SimSummary = list()
-EffLen_Mat = list()
-
-cellTypes = c("CT1","CT2","CT3")
-
-batch = 1
-
-for(batch in length(batch_cut)){
-  
-  pc_nums = batch_cut[[batch]]
-  
-  # Probability combination label
-  pc = pc_labels[pc_nums]
-  
-  # Create mixture files
-  mix_creation2(set_mixSim = set_mixSim, out_folder = prefix_mix,
-                file_labels = mix_labels[pc_nums], total_cts = total_cts_mix[pc_nums], 
-                probs = p_combos[pc_nums,], seed = seeds[batch])
-  
-  mix_files = list.files(path = prefix_mix, pattern = "counts.txt",
-                         full.names = T)
-  
-  mix_names = str_remove(mix_labels[pc_nums], "_counts")
-  
-  # Fit IsoDeconvMM algorithm
-  SimResults_Full = IsoDeconvMM(directory = NULL, mix_files = mix_files,
-                                pure_ref_files = pure_ref_files,
-                                fraglens_files = fraglens_file,
-                                bedFile = sprintf("%s/Homo_sapiens.GRCh37.66.nonoverlap.exon.bed", prefix_HM),
-                                knownIsoforms = sprintf("%s/Homo_sapiens.GRCh37.66.nonoverlap.exon.knownIsoforms.RData", prefix_HM),
-                                discrim_genes = union(genesDiffExp, genesDiffUsage),
-                                readLen = 75, lmax = 600, eLenMin = 1,
-                                mix_names = mix_names, initPts = NULL,
-                                optim_options = optimControl(simple.Init = FALSE))
-  
-  
-  # Save subset of results
-  for(m in mix_names){
-    
-    results = SimResults_Full[[m]]
-    clust_names = names(results)
-    
-    for(clust in clust_names){
-      
-      SimResults[[m]][[clust]][["mix"]][["gamma.est"]] = results[[clust]][["mix"]][["gamma.est"]]
-      SimResults[[m]][[clust]][["mix"]][["tau.est"]] = results[[clust]][["mix"]][["tau.est"]]
-      SimResults[[m]][[clust]][["mix"]][["p.est"]] = results[[clust]][["mix"]][["p.est"]]
-      SimResults[[m]][[clust]][["l_tilde"]] = results[[clust]][["l_tilde"]]
-      SimResults[[m]][[clust]][["alpha.est"]] = results[[clust]][["alpha.est"]]
-      SimResults[[m]][[clust]][["beta.est"]] = results[[clust]][["beta.est"]]
-      SimResults[[m]][[clust]][[cellTypes[1]]][["tau.hat"]] = results[[clust]][[cellTypes[1]]][["tau.hat"]]
-      SimResults[[m]][[clust]][[cellTypes[2]]][["tau.hat"]] = results[[clust]][[cellTypes[2]]][["tau.hat"]]
-      SimResults[[m]][[clust]][[cellTypes[3]]][["tau.hat"]] = results[[clust]][[cellTypes[3]]][["tau.hat"]]
-      SimResults[[m]][[clust]][[cellTypes[1]]][["gamma.hat"]] = results[[clust]][[cellTypes[1]]][["gamma.hat"]]
-      SimResults[[m]][[clust]][[cellTypes[2]]][["gamma.hat"]] = results[[clust]][[cellTypes[2]]][["gamma.hat"]]
-      SimResults[[m]][[clust]][[cellTypes[3]]][["gamma.hat"]] = results[[clust]][[cellTypes[3]]][["gamma.hat"]]
-      SimResults[[m]][[clust]][["CellType_Order"]] = results[[clust]][["CellType_Order"]]
-      SimResults[[m]][[clust]][["WARN"]] = results[[clust]][["WARN"]]
-      
-      EffLen_Mat[[m]][[clust]][["X"]] = results[[clust]][["X"]]
-      EffLen_Mat[[m]][[clust]][["X.prime"]] = results[[clust]][["X.prime"]]
-      
-    }
-    
-  }
-  
-  # Find probability estimates for mixtures
-  SimSummary[[batch]] = Summarize_Report(SimResults_Full, plots_options = plotsControl(plots = FALSE))
-  
-  # Delete mixture files to save space on storage
-  system(sprintf("rm %s/*_counts.txt", prefix_mix))
-  
-}
 
 ##########################################################################################################
 
