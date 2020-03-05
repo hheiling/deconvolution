@@ -140,6 +140,10 @@ geneInfo = gene_level(total_cts = total_cts, gene_alpha = gene_alpha, seed = see
 
 ```
 
+```{r, eval=FALSE}
+save(geneInfo, file = "Simulated_Output/initial_geneInfo.RData")
+```
+
 Select genes for differential expression (100 of 1000) and differential isoform usage (100 of 1000, not overlapping with differential expression genes).
 
 ```{r}
@@ -161,7 +165,7 @@ Specify and apply fold changes to gene counts for genes specified to have differ
 #     matrix same dimension and organization of geneInfo$ct_mat
 geneCtDiffExp = diff_exp(gene_counts = geneInfo$ct_mat, n = n, J = J, 
                          CT_diffExp = 2, diff_genes_mat = diffGeneInfo, 
-                         propUp = 0.35, seed = seeds[4])
+                         propUp = 0.30, seed = seeds[4])
 
 # Identify and save gene names specified for differential expression and differential isoform usage
 # differential expression
@@ -179,7 +183,9 @@ save(genes_df, file = "Simulated_Output/genes_simulated_w_diffExp_diffUsg.RData"
 
 Check to make sure the ending fold changes for these 100 genes in Cell Type 2 are as expected. 
 
-Expected: average log2 fold changes between $log2(1.5) \approx 0.58$ and $log2(2.0) = 1.0$ (both positive and negative) across all of the samples of Cell Type 2 for the 100 genes specified to have differential expression.
+In the following histogram, this looks at the ratio of counts after vs before fold changes were applied (regarding the 100 genes specified for differential expression).
+
+Expected: average log2 fold changes between $log2(1.6) \approx 0.68$ and $log2(2.0) = 1.0$ (both positive and negative) across all of the samples of Cell Type 2 for the 100 genes specified to have differential expression.
 
 ```{r}
 fc_check = calc_diffExp(gene_counts_new = geneCtDiffExp[,(1+n):(2*n)], 
@@ -187,7 +193,40 @@ fc_check = calc_diffExp(gene_counts_new = geneCtDiffExp[,(1+n):(2*n)],
                         diff_genes_mat = diffGeneInfo)
 
 hist(log2(fc_check$fc_avg))
+
+summary((fc_check$fc_avg))
 ```
+
+On the individual sample scale, things look good.
+
+Check of overall differential expression across cell types. Group cell types 1 and 3 together, compare collectively with cell type 2.
+
+```{r}
+# Normalize total gene count across all samples
+norm_factor = 7*10^6 / colSums(geneCtDiffExp) # Normalize to mean value 7 million
+ct_norm = geneCtDiffExp * matrix(norm_factor, nrow = nrow(geneCtDiffExp), 
+                                   ncol = length(norm_factor), byrow = T)
+
+head(colSums(ct_norm))
+
+# Split into the two groups
+groups_13 = ct_norm[which(rownames(geneCtDiffExp) %in% genesDiffExp),c(1:n, (2*n+1):(3*n))]
+groups_2 = ct_norm[which(rownames(geneCtDiffExp) %in% genesDiffExp),(n+1):(2*n)]
+
+# Find overall expression ratio
+exp_ratios = rowMeans(groups_2) / rowMeans(groups_13)
+
+# Results
+hist(log2(exp_ratios))
+
+hist(exp_ratios)
+
+summary(exp_ratios)
+```
+
+These results look pretty close to expected (although with a bit more spread than in the previous histogram)
+
+## Pure Sample Set-Up, Take 1
 
 Find cluster, isoform, and exon set level information for the 1,000 genes of interest for all cell types. 
 
@@ -206,14 +245,136 @@ For all cell types, the 900 genes not specified to have differential isoform usa
 Cell type 1 will specify the uniform dirichlet class for the 100 differential usage genes; cell type two will specify the outlier dirichlet class; and cell type 3 will specify the paired dirichlet class. 
 
 ```{r}
+# # Specify isoform Dirichlet distribution type
+# # Note: gene clusters chosen so number isoforms I >= 3 for all genes
+# CT1_iso_dist = rep("uniform", times = nrow(nTE_filtered))
+# CT2_iso_dist = ifelse(geneInfo$gene_names %in% genesDiffUsage, "outlier", "uniform")
+# CT3_iso_dist = ifelse(geneInfo$gene_names %in% genesDiffUsage, "paired", "uniform")
+# 
+# 
+# # Output for iso_exon_info(): for each cluster corresponding to the 1,000 genes of interest, 
+# #     records the alpha parameters for the isoform dirichlet dist (iso_alpha), 
+# #     the probability vector associated with the isoform distribution (rho),
+# #     the negative binomial mean parameters for all relevant exon sets (mu),
+# #     and a character vector of the relevant exon sets (exon_sets)
+# 
+# iso_exon_1000 = list()
+# 
+# iso_exon_1000[["CT1"]] = iso_exon_info(genes_info = geneCtDiffExp[,1:n], 
+#                                        nTE_filtered = nTE_filtered,
+#                                        iso_dist = CT1_iso_dist,
+#                                        alphaRange = c(20,50),
+#                                        EffLen_info = X_info, seed = seeds[5])
+# 
+# iso_exon_1000[["CT2"]] = iso_exon_info(genes_info = geneCtDiffExp[,(n+1):(2*n)], 
+#                                        nTE_filtered = nTE_filtered,
+#                                        iso_dist = CT2_iso_dist,
+#                                        alphaRange = c(20,50),
+#                                        EffLen_info = X_info, seed = seeds[6])
+# 
+# iso_exon_1000[["CT3"]] = iso_exon_info(genes_info = geneCtDiffExp[,(2*n+1):(3*n)], 
+#                                        nTE_filtered = nTE_filtered,
+#                                        iso_dist = CT3_iso_dist,
+#                                        alphaRange = c(20,50),
+#                                        EffLen_info = X_info, seed = seeds[7])
 
+```
 
+```{r, eval=FALSE}
+# save(iso_exon_1000, file = "Simulated_Output/Iso_Exon_Params_1000.RData")
+```
+
+## Pure Sample Set-Up, Take 2
+
+Find cluster, isoform, and exon set level information for the 1,000 genes of interest for all cell types. 
+
+For the 100 genes specified to have differential isoform usage: each cell type will have a different dirichlet distribution specified for these isoforms across the samples of the different cell types. 
+
+Description of different dirichlet distribution classes used:
+
+* uniform: all probabilities will be close to 1/I, where I = number of isoforms for the gene. All alpha parameters of the dirichlet distribution will be constant at the value specified by the second component of the `alphaRange` parameter.
+
+* outlier: one isoform probability (of the I probabilities) will be relatively high (alpha = second component of `alphaRange` parameter) and the remaining probability will be approx. evenly distributed among the remaining I-1 isoforms (alpha values associated with these I-1 probabilities equal to the first component of `alphaRange`). The isoform with the outlying high alpha is the isoform associated with the last column (column I) of the effective length X matrix (i.e. associated with last column of the known isoforms matrix).
+
+* paired: two isoform probabilities will be relatively high (alpha values associated with these 2 probabilites equal to second component of `alphaRange`) and the remaining probability will be approx. evenly distributed among the remaining I-2 isoforms (alpha values associated with these I-2 probabilities equal to the first component of `alphaRange`). (Note: these genes were partly selected based on having 3 or more isoforms). The isoforms with the higher alpha values are the isoforms associated with the first two columns (columns 1-2 ) of the effective length X matrix (i.e. associated with columns 1-2 of the known isoforms matrix).
+
+For all cell types, the 900 genes not specified to have differential isoform usage will have uniform dirichlet distributions with the same alpha values across all three cell types.
+
+Cell type 1 will specify the uniform dirichlet class for the 100 differential usage genes; cell type two will specify the outlier dirichlet class; and cell type 3 will specify the paired dirichlet class. 
+
+```{r}
+# # Specify isoform Dirichlet distribution type
+# # Note: gene clusters chosen so number isoforms I >= 3 for all genes
+# CT1_iso_dist = rep("uniform", times = nrow(nTE_filtered))
+# CT2_iso_dist = ifelse(geneInfo$gene_names %in% genesDiffUsage, "outlier", "uniform")
+# CT3_iso_dist = ifelse(geneInfo$gene_names %in% genesDiffUsage, "paired", "uniform")
+# 
+# 
+# # Output for iso_exon_info(): for each cluster corresponding to the 1,000 genes of interest, 
+# #     records the alpha parameters for the isoform dirichlet dist (iso_alpha), 
+# #     the probability vector associated with the isoform distribution (rho),
+# #     the negative binomial mean parameters for all relevant exon sets (mu),
+# #     and a character vector of the relevant exon sets (exon_sets)
+# 
+# iso_exon_1000 = list()
+# 
+# iso_exon_1000[["CT1"]] = iso_exon_info2(genes_info = geneCtDiffExp[,1:n],
+#                                        nTE_filtered = nTE_filtered,
+#                                        iso_dist = CT1_iso_dist,
+#                                        alphaRange = c(20,50),
+#                                        EffLen_info = X_info, seed = seeds[5])
+# 
+# iso_exon_1000[["CT2"]] = iso_exon_info2(genes_info = geneCtDiffExp[,(n+1):(2*n)],
+#                                        nTE_filtered = nTE_filtered,
+#                                        iso_dist = CT2_iso_dist,
+#                                        alphaRange = c(20,50),
+#                                        EffLen_info = X_info, seed = seeds[6])
+# 
+# iso_exon_1000[["CT3"]] = iso_exon_info2(genes_info = geneCtDiffExp[,(2*n+1):(3*n)],
+#                                        nTE_filtered = nTE_filtered,
+#                                        iso_dist = CT3_iso_dist,
+#                                        alphaRange = c(10,50),
+#                                        EffLen_info = X_info, seed = seeds[7])
+
+```
+
+```{r, eval=FALSE}
+# save(iso_exon_1000, file = "Simulated_Output/Iso_Exon_Params_1000_2.RData")
+```
+
+## Pure Sample Set-Up, Take 3
+
+Find cluster, isoform, and exon set level information for the 1,000 genes of interest for all cell types. 
+
+For the 100 genes specified to have differential isoform usage: each cell type will have a different dirichlet distribution specified for these isoforms across the samples of the different cell types. 
+
+Description of different dirichlet distribution classes used:
+
+* outlier1: The first isoform (isoform 1 as determined by first column of knownIsoforms matrix) of the I isoforms will have the highest probability (by a significant margin) and the remaining isoforms will have small probabilities that are approx. uniform across these I-1 isoforms. 
+
+* outlier2: The second isoform (isoform 2 as determined by second column of knownIsoforms matrix) of the I isoforms will have the highest probability (by a significant margin) and the remaining isoforms will have small probabilities that are approx. uniform across these I-1 isoforms.
+
+* outlier3: The third isoform (isoform 3 as determined by third column of knownIsoforms matrix) of the I isoforms will have the highest probability (by a significant margin) and the remaining isoforms will have small probabilities that are approx. uniform across these I-1 isoforms.
+
+For all cell types, the 900 genes not specified to have differential isoform usage will have uniform dirichlet distributions with the same alpha values across all three cell types.
+
+* uniform: all probabilities will be close to 1/I, where I = number of isoforms for the gene. All alpha parameters of the dirichlet distribution will be constant at the value specified by the second component of the `alphaRange` parameter.
+
+Cell type 1 will specify the uniform dirichlet class for the 100 differential usage genes; cell type two will specify the outlier dirichlet class; and cell type 3 will specify the paired dirichlet class. 
+
+The gene counts for the 'other' 4,172 genes will be approx. evenly distributed among the singular exon sets associated with the gene cluster. 
+
+```{r}
 # Specify isoform Dirichlet distribution type
 # Note: gene clusters chosen so number isoforms I >= 3 for all genes
-CT1_iso_dist = rep("uniform", times = nrow(nTE_filtered))
-CT2_iso_dist = ifelse(geneInfo$gene_names %in% genesDiffUsage, "outlier", "uniform")
-CT3_iso_dist = ifelse(geneInfo$gene_names %in% genesDiffUsage, "paired", "uniform")
+CT1_iso_dist = ifelse(geneInfo$gene_names %in% genesDiffUsage, "outlier1", "uniform")
+CT2_iso_dist = ifelse(geneInfo$gene_names %in% genesDiffUsage, "outlier2", "uniform")
+CT3_iso_dist = ifelse(geneInfo$gene_names %in% genesDiffUsage, "outlier3", "uniform")
 
+# Check
+sum(CT1_iso_dist == "outlier1")
+sum(CT1_iso_dist == "outlier2")
+sum(CT1_iso_dist == "outlier3")
 
 # Output for iso_exon_info(): for each cluster corresponding to the 1,000 genes of interest, 
 #     records the alpha parameters for the isoform dirichlet dist (iso_alpha), 
@@ -223,31 +384,30 @@ CT3_iso_dist = ifelse(geneInfo$gene_names %in% genesDiffUsage, "paired", "unifor
 
 iso_exon_1000 = list()
 
-iso_exon_1000[["CT1"]] = iso_exon_info(genes_info = geneCtDiffExp[,1:n], 
+iso_exon_1000[["CT1"]] = iso_exon_info3(genes_info = geneCtDiffExp[,1:n],
                                        nTE_filtered = nTE_filtered,
                                        iso_dist = CT1_iso_dist,
-                                       alphaRange = c(20,50),
+                                       alphaRange = c(5,50),
                                        EffLen_info = X_info, seed = seeds[5])
 
-iso_exon_1000[["CT2"]] = iso_exon_info(genes_info = geneCtDiffExp[,(n+1):(2*n)], 
+iso_exon_1000[["CT2"]] = iso_exon_info3(genes_info = geneCtDiffExp[,(n+1):(2*n)],
                                        nTE_filtered = nTE_filtered,
                                        iso_dist = CT2_iso_dist,
-                                       alphaRange = c(20,50),
+                                       alphaRange = c(5,50),
                                        EffLen_info = X_info, seed = seeds[6])
 
-iso_exon_1000[["CT3"]] = iso_exon_info(genes_info = geneCtDiffExp[,(2*n+1):(3*n)], 
+iso_exon_1000[["CT3"]] = iso_exon_info3(genes_info = geneCtDiffExp[,(2*n+1):(3*n)],
                                        nTE_filtered = nTE_filtered,
                                        iso_dist = CT3_iso_dist,
-                                       alphaRange = c(20,50),
+                                       alphaRange = c(5,50),
                                        EffLen_info = X_info, seed = seeds[7])
 
 ```
 
 ```{r, eval=FALSE}
-save(iso_exon_1000, file = "Simulated_Output/Iso_Exon_Params_1000.RData")
+save(iso_exon_1000, file = "Simulated_Output/Iso_Exon_Params_1000_3.RData")
 ```
 
-The gene counts for the 'other' 4,172 genes will be approx. evenly distributed among the singular exon sets associated with the gene cluster. 
 
 ```{r}
 
@@ -280,6 +440,9 @@ iso_exon_other[["CT3"]] = other_exonset_count(genes_info = geneCtDiffExp[,(2*n+1
                                               alphaRange = c(20,50), seed = seeds[10])
 ```
 
+```{r, eval=FALSE}
+save(iso_exon_other, file = "Simulated_Output/Iso_Exon_Counts_Other.RData")
+```
 
 ## Record Exon Set Counts in counts.txt Files
 
@@ -302,10 +465,23 @@ files3 = str_c("CT3_ref_",rep_pure,"_counts")
 ```
 
 ```{r, eval=FALSE}
+# Take 1
+# counts_output(exonInfo_1000 = iso_exon_1000, exonInfo_other = iso_exon_other,
+#               theta = geneInfo$theta,
+#               file_labels = c(files1, files2, files3),
+#               folder = "Simulated_Output/Pure Sample Counts", seed = seeds[11])
+
+# Take 2
+# counts_output(exonInfo_1000 = iso_exon_1000, exonInfo_other = iso_exon_other,
+#               theta = geneInfo$theta,
+#               file_labels = c(files1, files2, files3),
+#               folder = "Simulated_Output/Pure Sample Counts 2", seed = seeds[11])
+
+# Take 3
 counts_output(exonInfo_1000 = iso_exon_1000, exonInfo_other = iso_exon_other,
               theta = geneInfo$theta,
               file_labels = c(files1, files2, files3),
-              folder = "Simulated_Output/Pure_Sample_Counts", seed = seeds[11])
+              folder = "Simulated_Output/Pure Sample Counts 3", seed = seeds[11])
 ```
 
 
@@ -382,45 +558,14 @@ nrow(p_combos)
 colnames(p_combos) = c("CT1","CT2","CT3")
 rownames(p_combos) = str_c("pc_",1:nrow(p_combos))
 
+p_combos
 ```
 
 ```{r, eval=FALSE}
 save(p_combos, file = "Simulated_Output/Probability_Combinations_Sim.RData")
 ```
 
-The mixture files will be created during the simulation process and then deleted to save space. However, here is an example of mixture file creation for demonstration.
-
-In the simulation, the number of mixture replicates per probabiltiy combination will be 20. I reduced number of 5 is used here for illustration.
-
-```{r}
-# Specify number of mixture replicates per probability combination
-mix_rep = 5
-rep_labels = str_c("0",1:mix_rep)
-
-# Specify total read counts for mixture replicates
-set.seed(seeds[12])
-total_cts_mix = matrix(rnorm(n = nrow(p_combos)*mix_rep, mean = 7*10^6, sd = 10^6), 
-                       nrow = mix_rep, ncol = nrow(p_combos))
-colnames(total_cts_mix) = str_c("pc_",1:nrow(p_combos))
-rownames(total_cts_mix) = str_c("rep_",rep_labels)
-
-# Create mixture samples
-mix_labels = matrix(NA, nrow = mix_rep, ncol = nrow(p_combos))
-for(p in 1:nrow(p_combos)){
-  mix_labels[,p] = str_c("Mixture_ProbCombo_",p,"_Replicate_",rep_labels,"_counts")
-}
-
-dim(mix_labels)
-
-
-```
-
-```{r, eval=FALSE}
-# Simulating mixture counts for first probability combination:
-mix_creation2(set_mixSim = set_mixSim, out_folder = "Simulated_Output/Mixture Sample Counts",
-             file_labels = mix_labels[,1], total_cts = total_cts_mix[,p], probs = p_combos[p,], 
-             seed = seeds[13])
-```
+The mixture files will be created during the simulation process. They will be created using the `mixture_creation2` function in the file "sim_functions.R".  
 
 ## Create Fragment length files for mixtures samples
 

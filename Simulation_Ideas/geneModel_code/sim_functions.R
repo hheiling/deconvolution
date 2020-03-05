@@ -64,10 +64,9 @@ diff_genes = function(CT1_counts, nTE_filtered, num_diff = 200, seed){
   gene_names = rownames(CT1_counts)
   
   # Check inputs
-  if(num_diff %% 4 != 0){
+  if(num_diff %% 2 != 0){
     # Note: will split num_diff into diff expression and diff usage. 
-    ## Of diff expression genes, will split into up and down expression
-    stop("Number of genes selected for differential expression must divisible by 4")
+    stop("Number of genes selected for differential expression must divisible by 2")
   }
   
   counts_subset = CT1_counts[which(gene_names %in% nTE_filtered$geneId),]
@@ -134,9 +133,9 @@ diff_exp = function(gene_counts, n, J, CT_diffExp = 2, diff_genes_mat, propUp, s
   up_diffExp = sample(gene_choices, num_upExp, replace = F)
   down_diffExp = gene_choices[-which(gene_choices %in% up_diffExp)]
   
-  fc[which(all_genes %in% up_diffExp),1] = runif(n = num_upExp, min = log2(1.5), max = log2(2))
+  fc[which(all_genes %in% up_diffExp),1] = runif(n = num_upExp, min = log2(1.6), max = log2(2))
   fc[which(all_genes %in% down_diffExp),1] = runif(n = num_downExp, min = -log2(2), 
-                                                   max = -log2(1.5))
+                                                   max = -log2(1.6))
   
   rownames(fc) = all_genes
   colnames(fc) = str_c("CT",CT_diffExp)
@@ -241,6 +240,202 @@ iso_exon_info = function(genes_info, nTE_filtered,
       alpha = c(rep(alphaRange[1], times = (I-1)), alphaRange[2])
     }else if(dir_dist == "paired"){
       alpha = c(rep(alphaRange[1], times = (I-2)), rep(alphaRange[2], times = 2))
+    }
+    
+    # isoform probability matrix - Ixn (col = isoform probability vector associated with sample i)
+    rho = t(rdirichlet(n = n, alpha = alpha))
+    candiIsoform = EffLen_info[[clust]]$candiIsoform
+    rownames(rho) = colnames(candiIsoform)
+    colnames(rho) = str_c("ref_",1:n)
+    
+    # scaling factor for gene
+    r_g = numeric(n)
+    # coefficient for mu_g = X_g %*% beta_g
+    beta = matrix(NA, nrow = I, ncol = n)
+    
+    for(i in 1:n){
+      r_g[i] = gene_ct[i] / sum(X %*% rho[,i])
+      beta[,i] = rho[,i] * r_g[i]
+    }
+    
+    # Find exon sets corresponding to rows of X
+    exon_sets = EffLen_info[[clust]]$ExonSetLabels
+    
+    # negative binomial means for the exon sets within cluster
+    # result: each col = neg bin means for sample i of n samples,
+    #   each row corresponds with (possible) exon sets
+    mu = X %*% beta
+    rownames(mu) = exon_sets
+    colnames(mu) = str_c("ref_",1:n)
+    
+    output[[clust]] = list(iso_alpha = alpha, rho = rho, mu = mu, exon_sets = exon_sets)
+  }
+  
+  return(output)
+  
+}
+
+#-----------------------------------------------------------------------------#
+# Simulate exon set negative binomial means - take 2                          #
+#-----------------------------------------------------------------------------#
+
+# Isoform and exon set information
+# Note: gene clusters chosen so number isoforms I >= 3 for all genes
+# iso_dist = "uniform": all probabilities will be close to 1/I (I = number isoforms)
+#     Note: this type only uses max of alphaRange
+# iso_dist = "outlier": one probability will be relatively high and the remaining prob
+#     will be approx. evenly distributed among the remaining I-1 isoforms
+#     Note: this type uses both min and max of alphaRange
+# iso_dist = "paired": two probabilities will be relatively high and the remaining
+#     probs will be approx. evenly distributed among the remaining I-2 isoforms
+#     Note: this type uses both min and max of alphaRange
+#     Note: In this situation, the isoforms with the highest alpha are different
+#       than in the original iso_exon_info() function
+iso_exon_info2 = function(genes_info, nTE_filtered, 
+                         iso_dist = rep("uniform", times = nrow(nTE_filtered)), 
+                         alphaRange, EffLen_info, 
+                         seed = seed){
+  
+  set.seed(seed)
+  
+  # names of 1,000 clusters of interest used in simulation
+  clust_names = nTE_filtered$clustID
+  # names of genes of interest
+  gene_names = nTE_filtered$geneId
+  # Number samples
+  n = ncol(genes_info)
+  
+  # Check iso_dist
+  iso_dist_options = unique(iso_dist)
+  if(!all(iso_dist_options %in% c("uniform","outlier","paired"))){
+    stop("iso_dist elements must be one of 'uniform', 'outlier', or 'paired'")
+  }
+  
+  output = list()
+  
+  for(clust in clust_names){
+    
+    # name of gene associated with cluster
+    gene = nTE_filtered$geneId[which(clust_names == clust)]
+    # vector of counts for gene simulated in gene_level() function for n samples
+    gene_ct = genes_info[which(gene_names == gene),]
+    # Effective length matrix - ExI (num exon sets x num isoforms)
+    X = EffLen_info[[clust]]$X
+    # number isoforms
+    I = ncol(X)
+    # dirichlet alpha parameters for isoforms
+    dir_dist = iso_dist[which(gene_names == gene)]
+    if(dir_dist == "uniform"){
+      alpha = rep(alphaRange[2], times = I)
+    }else if(dir_dist == "outlier"){
+      alpha = c(rep(alphaRange[1], times = (I-1)), alphaRange[2])
+    }else if(dir_dist == "paired"){
+      alpha = c(rep(alphaRange[2], times = 2), rep(alphaRange[1], times = (I-2)))
+    }
+    
+    # isoform probability matrix - Ixn (col = isoform probability vector associated with sample i)
+    rho = t(rdirichlet(n = n, alpha = alpha))
+    candiIsoform = EffLen_info[[clust]]$candiIsoform
+    rownames(rho) = colnames(candiIsoform)
+    colnames(rho) = str_c("ref_",1:n)
+    
+    # scaling factor for gene
+    r_g = numeric(n)
+    # coefficient for mu_g = X_g %*% beta_g
+    beta = matrix(NA, nrow = I, ncol = n)
+    
+    for(i in 1:n){
+      r_g[i] = gene_ct[i] / sum(X %*% rho[,i])
+      beta[,i] = rho[,i] * r_g[i]
+    }
+    
+    # Find exon sets corresponding to rows of X
+    exon_sets = EffLen_info[[clust]]$ExonSetLabels
+    
+    # negative binomial means for the exon sets within cluster
+    # result: each col = neg bin means for sample i of n samples,
+    #   each row corresponds with (possible) exon sets
+    mu = X %*% beta
+    rownames(mu) = exon_sets
+    colnames(mu) = str_c("ref_",1:n)
+    
+    output[[clust]] = list(iso_alpha = alpha, rho = rho, mu = mu, exon_sets = exon_sets)
+  }
+  
+  return(output)
+  
+}
+
+
+#-----------------------------------------------------------------------------#
+# Simulate exon set negative binomial means - take 3                          #
+#-----------------------------------------------------------------------------#
+
+# Isoform and exon set information
+# Note: gene clusters chosen so number isoforms I >= 3 for all genes
+# iso_dist = "uniform": all probabilities will be close to 1/I (I = number isoforms)
+#     Note: this type only uses max of alphaRange
+# iso_dist = "outlier1": The first isoform (isoform 1 as determined by first column of 
+#     knownIsoforms matrix) of the I isoforms will have the highest probability (by a significant 
+#     margin) and the remaining isoforms will have small probabilities that are approx. uniform 
+#     across these I-1 isoforms. 
+#     Note: this type uses both min and max of alphaRange
+# iso_dist = "outlier2": The second isoform (isoform 2 as determined by second column of 
+#     knownIsoforms matrix) of the I isoforms will have the highest probability (by a significant 
+#     margin) and the remaining isoforms will have small probabilities that are approx. uniform 
+#     across these I-1 isoforms. 
+#     Note: this type uses both min and max of alphaRange
+# iso_dist = "outlier2": The third isoform (isoform 3 as determined by third column of 
+#     knownIsoforms matrix) of the I isoforms will have the highest probability (by a significant 
+#     margin) and the remaining isoforms will have small probabilities that are approx. uniform 
+#     across these I-1 isoforms. 
+#     Note: this type uses both min and max of alphaRange
+iso_exon_info3 = function(genes_info, nTE_filtered, 
+                          iso_dist = rep("uniform", times = nrow(nTE_filtered)), 
+                          alphaRange, EffLen_info, 
+                          seed = seed){
+  
+  set.seed(seed)
+  
+  # names of 1,000 clusters of interest used in simulation
+  clust_names = nTE_filtered$clustID
+  # names of genes of interest
+  gene_names = nTE_filtered$geneId
+  # Number samples
+  n = ncol(genes_info)
+  
+  # Check iso_dist
+  iso_dist_options = unique(iso_dist)
+  if(!all(iso_dist_options %in% c("uniform","outlier1","outlier2","outlier3"))){
+    stop("iso_dist elements must be one of 'uniform', 'outlier1', 'outlier2', or 'outlier3'")
+  }
+  
+  output = list()
+  
+  for(clust in clust_names){
+    
+    # name of gene associated with cluster
+    gene = nTE_filtered$geneId[which(clust_names == clust)]
+    # vector of counts for gene simulated in gene_level() function for n samples
+    gene_ct = genes_info[which(gene_names == gene),]
+    # Effective length matrix - ExI (num exon sets x num isoforms)
+    X = EffLen_info[[clust]]$X
+    # number isoforms
+    I = ncol(X)
+    # dirichlet alpha parameters for isoforms
+    dir_dist = iso_dist[which(gene_names == gene)]
+    if(dir_dist == "uniform"){
+      alpha = rep(alphaRange[2], times = I)
+    }else if(dir_dist == "outlier1"){
+      alpha = c(alphaRange[2], rep(alphaRange[1], times = (I-1)))
+    }else if(dir_dist == "outlier2"){
+      alpha = c(alphaRange[1], alphaRange[2], rep(alphaRange[1], times = (I-2)))
+    }else if(dir_dist == "outlier3"){
+      if(I == 3){
+        alpha = c(rep(alphaRange[1], times=2), alphaRange[2])
+      }else{ # I > 3
+        alpha = c(rep(alphaRange[1], times=2), alphaRange[2], rep(alphaRange[1], times = (I-3)))
+      }
     }
     
     # isoform probability matrix - Ixn (col = isoform probability vector associated with sample i)
@@ -575,10 +770,11 @@ mix_creation2 = function(set_mixSim, out_folder, file_labels, total_cts, probs, 
     }
 
     # Calculate ratio of total counts between mixture sample and pure reference counts
+    # Goal: standardize total counts from each pure sample, then take desired proportion
     cts_Ratio = total_cts[k] / colSums(pure_counts)
     
     # Multiply p and cts_Ratio to appropriate columns of pure_counts to get mixture sample components
-    mix_componenets = mix_components = pure_counts * matrix(p, nrow = nrow(pure_counts), ncol = J, byrow = T) *
+    mix_componenets = pure_counts * matrix(p, nrow = nrow(pure_counts), ncol = J, byrow = T) *
       matrix(cts_Ratio, nrow = nrow(pure_counts), ncol = J, byrow = T)
     mixture = rowSums(round(mix_components))
 
