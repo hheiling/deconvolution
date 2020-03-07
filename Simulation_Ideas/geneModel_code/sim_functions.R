@@ -200,19 +200,24 @@ calc_diffExp = function(gene_counts_new, gene_counts_orig, diff_genes_mat){
 # iso_dist = "paired": two probabilities will be relatively high and the remaining
 #     probs will be approx. evenly distributed among the remaining I-2 isoforms
 #     Note: this type uses both min and max of alphaRange
-iso_exon_info = function(genes_info, nTE_filtered, 
-                         iso_dist = rep("uniform", times = nrow(nTE_filtered)), 
-                         alphaRange = c(20,50), EffLen_info, 
-                         seed = seed){
+iso_exon_info = function(genes_info, nTE_filtered, iso_dist, 
+                          alphaRange, EffLen_info, 
+                          seed = seed){
   
   set.seed(seed)
   
   # names of 1,000 clusters of interest used in simulation
   clust_names = nTE_filtered$clustID
   # names of genes of interest
-  gene_names = nTE_filtered$geneId
+  ## note: rows of genes_info matrix restricted to genes in nTE_filtered object
+  gene_names = rownames(genes_info)
   # Number samples
   n = ncol(genes_info)
+  
+  # Check
+  if(length(gene_names) != length(clust_names)){
+    stop("nrow of genes_info does not match nrow of nTE_filtered")
+  }
   
   # Check iso_dist
   iso_dist_options = unique(iso_dist)
@@ -233,7 +238,7 @@ iso_exon_info = function(genes_info, nTE_filtered,
     # number isoforms
     I = ncol(X)
     # dirichlet alpha parameters for isoforms
-    dir_dist = iso_dist[which(gene_names == gene)]
+    dir_dist = iso_dist[which(names(iso_dist) == gene)]
     if(dir_dist == "uniform"){
       alpha = rep(alphaRange[2], times = I)
     }else if(dir_dist == "outlier"){
@@ -275,6 +280,7 @@ iso_exon_info = function(genes_info, nTE_filtered,
   
 }
 
+
 #-----------------------------------------------------------------------------#
 # Simulate exon set negative binomial means - take 2                          #
 #-----------------------------------------------------------------------------#
@@ -291,23 +297,28 @@ iso_exon_info = function(genes_info, nTE_filtered,
 #     Note: this type uses both min and max of alphaRange
 #     Note: In this situation, the isoforms with the highest alpha are different
 #       than in the original iso_exon_info() function
-iso_exon_info2 = function(genes_info, nTE_filtered, 
-                         iso_dist = rep("uniform", times = nrow(nTE_filtered)), 
-                         alphaRange, EffLen_info, 
-                         seed = seed){
+iso_exon_info2 = function(genes_info, nTE_filtered, iso_dist, 
+                          alphaRange, EffLen_info, 
+                          seed = seed){
   
   set.seed(seed)
   
   # names of 1,000 clusters of interest used in simulation
   clust_names = nTE_filtered$clustID
   # names of genes of interest
-  gene_names = nTE_filtered$geneId
+  ## note: rows of genes_info matrix restricted to genes in nTE_filtered object
+  gene_names = rownames(genes_info)
   # Number samples
   n = ncol(genes_info)
   
+  # Check
+  if(length(gene_names) != length(clust_names)){
+    stop("nrow of genes_info does not match nrow of nTE_filtered")
+  }
+  
   # Check iso_dist
   iso_dist_options = unique(iso_dist)
-  if(!all(iso_dist_options %in% c("uniform","outlier","paired"))){
+  if(!all(iso_dist_options %in% c("uniform","outlier","paired","outlier3"))){
     stop("iso_dist elements must be one of 'uniform', 'outlier', or 'paired'")
   }
   
@@ -324,7 +335,7 @@ iso_exon_info2 = function(genes_info, nTE_filtered,
     # number isoforms
     I = ncol(X)
     # dirichlet alpha parameters for isoforms
-    dir_dist = iso_dist[which(gene_names == gene)]
+    dir_dist = iso_dist[which(names(iso_dist) == gene)]
     if(dir_dist == "uniform"){
       alpha = rep(alphaRange[2], times = I)
     }else if(dir_dist == "outlier"){
@@ -390,8 +401,7 @@ iso_exon_info2 = function(genes_info, nTE_filtered,
 #     margin) and the remaining isoforms will have small probabilities that are approx. uniform 
 #     across these I-1 isoforms. 
 #     Note: this type uses both min and max of alphaRange
-iso_exon_info3 = function(genes_info, nTE_filtered, 
-                          iso_dist = rep("uniform", times = nrow(nTE_filtered)), 
+iso_exon_info3 = function(genes_info, nTE_filtered, iso_dist, 
                           alphaRange, EffLen_info, 
                           seed = seed){
   
@@ -400,9 +410,15 @@ iso_exon_info3 = function(genes_info, nTE_filtered,
   # names of 1,000 clusters of interest used in simulation
   clust_names = nTE_filtered$clustID
   # names of genes of interest
-  gene_names = nTE_filtered$geneId
+  ## note: rows of genes_info matrix restricted to genes in nTE_filtered object
+  gene_names = rownames(genes_info)
   # Number samples
   n = ncol(genes_info)
+  
+  # Check
+  if(length(gene_names) != length(clust_names)){
+    stop("nrow of genes_info does not match nrow of nTE_filtered")
+  }
   
   # Check iso_dist
   iso_dist_options = unique(iso_dist)
@@ -423,7 +439,7 @@ iso_exon_info3 = function(genes_info, nTE_filtered,
     # number isoforms
     I = ncol(X)
     # dirichlet alpha parameters for isoforms
-    dir_dist = iso_dist[which(gene_names == gene)]
+    dir_dist = iso_dist[which(names(iso_dist) == gene)]
     if(dir_dist == "uniform"){
       alpha = rep(alphaRange[2], times = I)
     }else if(dir_dist == "outlier1"){
@@ -491,9 +507,15 @@ other_exonset_count = function(genes_info, nTE_other, exon_sets_other,
   # names of 'other' clusters 
   clust_names = nTE_other$clustID
   # names of 'other' genes
-  gene_names = nTE_other$geneId
+  ## Note: rows of genes_info matrix restricted to genes in nTE_other object
+  gene_names = rownames(genes_info)
   # Number samples
   n = ncol(genes_info)
+  
+  # Check
+  if(length(gene_names) != length(clust_names)){
+    stop("nrow of genes_info does not match nrow of nTE_other")
+  }
   
   # Check iso_dist
   iso_dist_options = unique(iso_dist)
@@ -506,7 +528,7 @@ other_exonset_count = function(genes_info, nTE_other, exon_sets_other,
   for(clust in clust_names){
     
     # name of gene associated with cluster
-    gene = gene_names[which(clust_names == clust)]
+    gene = nTE_other$geneId[which(clust_names == clust)]
     # vector of counts for gene simulated in gene_level() function for n samples
     gene_ct = genes_info[which(gene_names == gene),]
     # singular exon sets
@@ -549,7 +571,7 @@ other_exonset_count = function(genes_info, nTE_other, exon_sets_other,
 #-----------------------------------------------------------------------------#
 
 counts_output = function(exonInfo_1000, exonInfo_other, theta, file_labels,
-                         folder = "Human_Materials/Pure Sample Counts", seed){
+                         folder, seed){
   
   set.seed(seed)
   

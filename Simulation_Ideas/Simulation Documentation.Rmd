@@ -203,7 +203,7 @@ Check of overall differential expression across cell types. Group cell types 1 a
 
 ```{r}
 # Normalize total gene count across all samples
-norm_factor = 7*10^6 / colSums(geneCtDiffExp) # Normalize to mean value 7 million
+norm_factor = 1*10^6 / colSums(geneCtDiffExp) # Normalize to mean value 7 million
 ct_norm = geneCtDiffExp * matrix(norm_factor, nrow = nrow(geneCtDiffExp), 
                                    ncol = length(norm_factor), byrow = T)
 
@@ -222,9 +222,73 @@ hist(log2(exp_ratios))
 hist(exp_ratios)
 
 summary(exp_ratios)
+
+# exp_ratios[which(log2(exp_ratios) > -0.5 & log2(exp_ratios) < 0.5)]
 ```
 
-These results look pretty close to expected (although with a bit more spread than in the previous histogram)
+These results look pretty close to expected (although with a bit more spread than in the previous histogram).
+
+Side-by-side box-plots of the expression of genes between the cell types.
+
+```{r}
+# Normalize total gene count across all samples
+norm_factor = 10^6 / colSums(geneCtDiffExp) # Normalize to mean value 7 million
+ct_norm = geneCtDiffExp * matrix(norm_factor, nrow = nrow(geneCtDiffExp), 
+                                   ncol = length(norm_factor), byrow = T)
+
+head(colSums(ct_norm))
+
+# Up-regulated genes
+up_reg = names(fc_check$fc_avg[which(fc_check$fc_avg > 1)])
+# Down-regulated genes
+down_reg = names(fc_check$fc_avg[which(fc_check$fc_avg < 1)])
+
+# Split into the two groups
+groups_13 = ct_norm[which(rownames(geneCtDiffExp) %in% genesDiffExp),c(1:n, (2*n+1):(3*n))]
+groups_2 = ct_norm[which(rownames(geneCtDiffExp) %in% genesDiffExp),(n+1):(2*n)]
+
+# Side-by-side box plots
+## Each plot represents normalized expression for a single gene across the 
+## two groups of samples
+
+par(mfrow = c(4,4), mar = c(2,2,1,1))
+for(i in 1:16){
+  boxplot(groups_13[i,], groups_2[i,],
+          names = c("CT1 & CT3","CT2"))
+}
+par(mfrow = c(4,4), mar = c(2,2,1,1))
+for(i in 17:32){
+  boxplot(groups_13[i,], groups_2[i,],
+          names = c("CT1 & CT3","CT2"))
+}
+par(mfrow = c(4,4), mar = c(2,2,1,1))
+for(i in 33:48){
+  boxplot(groups_13[i,], groups_2[i,],
+          names = c("CT1 & CT3","CT2"))
+}
+par(mfrow = c(4,4), mar = c(2,2,1,1))
+for(i in 49:64){
+  boxplot(groups_13[i,], groups_2[i,],
+          names = c("CT1 & CT3","CT2"))
+}
+par(mfrow = c(4,4), mar = c(2,2,1,1))
+for(i in 65:80){
+  boxplot(groups_13[i,], groups_2[i,],
+          names = c("CT1 & CT3","CT2"))
+}
+par(mfrow = c(4,4), mar = c(2,2,1,1))
+for(i in 81:96){
+  boxplot(groups_13[i,], groups_2[i,],
+          names = c("CT1 & CT3","CT2"))
+}
+par(mfrow = c(2,2), mar = c(2,2,1,1))
+for(i in 97:100){
+  boxplot(groups_13[i,], groups_2[i,],
+          names = c("CT1 & CT3","CT2"))
+}
+
+```
+
 
 ## Pure Sample Set-Up, Take 1
 
@@ -248,9 +312,17 @@ Cell type 1 will specify the uniform dirichlet class for the 100 differential us
 # # Specify isoform Dirichlet distribution type
 # # Note: gene clusters chosen so number isoforms I >= 3 for all genes
 # CT1_iso_dist = rep("uniform", times = nrow(nTE_filtered))
-# CT2_iso_dist = ifelse(geneInfo$gene_names %in% genesDiffUsage, "outlier", "uniform")
-# CT3_iso_dist = ifelse(geneInfo$gene_names %in% genesDiffUsage, "paired", "uniform")
+# CT2_iso_dist = ifelse(nTE_filtered$geneId %in% genesDiffUsage, "outlier", "uniform")
+# CT3_iso_dist = ifelse(nTE_filtered$geneId %in% genesDiffUsage, "paired", "uniform")
 # 
+# names(CT1_iso_dist) = nTE_filtered$geneId
+# names(CT2_iso_dist) = nTE_filtered$geneId
+# names(CT3_iso_dist) = nTE_filtered$geneId
+# 
+# # Check
+# sum(CT1_iso_dist == "uniform")
+# sum(CT2_iso_dist == "outlier")
+# sum(CT3_iso_dist == "paired")
 # 
 # # Output for iso_exon_info(): for each cluster corresponding to the 1,000 genes of interest, 
 # #     records the alpha parameters for the isoform dirichlet dist (iso_alpha), 
@@ -260,28 +332,29 @@ Cell type 1 will specify the uniform dirichlet class for the 100 differential us
 # 
 # iso_exon_1000 = list()
 # 
-# iso_exon_1000[["CT1"]] = iso_exon_info(genes_info = geneCtDiffExp[,1:n], 
+# iso_exon_1000_A[["CT1"]] = iso_exon_info(genes_info = geneCtDiffExp[which(rownames(geneCtDiffExp) %in% nTE_filtered$geneId),1:n],
 #                                        nTE_filtered = nTE_filtered,
 #                                        iso_dist = CT1_iso_dist,
-#                                        alphaRange = c(20,50),
+#                                        alphaRange = c(5,50),
 #                                        EffLen_info = X_info, seed = seeds[5])
 # 
-# iso_exon_1000[["CT2"]] = iso_exon_info(genes_info = geneCtDiffExp[,(n+1):(2*n)], 
+# iso_exon_1000_A[["CT2"]] = iso_exon_info(genes_info = geneCtDiffExp[which(rownames(geneCtDiffExp) %in% nTE_filtered$geneId),(n+1):(2*n)],
 #                                        nTE_filtered = nTE_filtered,
 #                                        iso_dist = CT2_iso_dist,
-#                                        alphaRange = c(20,50),
+#                                        alphaRange = c(5,50),
 #                                        EffLen_info = X_info, seed = seeds[6])
 # 
-# iso_exon_1000[["CT3"]] = iso_exon_info(genes_info = geneCtDiffExp[,(2*n+1):(3*n)], 
+# iso_exon_1000_A[["CT3"]] = iso_exon_info(genes_info = geneCtDiffExp[which(rownames(geneCtDiffExp) %in% nTE_filtered$geneId),(2*n+1):(3*n)],
 #                                        nTE_filtered = nTE_filtered,
 #                                        iso_dist = CT3_iso_dist,
-#                                        alphaRange = c(20,50),
+#                                        alphaRange = c(5,50),
 #                                        EffLen_info = X_info, seed = seeds[7])
+
 
 ```
 
 ```{r, eval=FALSE}
-# save(iso_exon_1000, file = "Simulated_Output/Iso_Exon_Params_1000.RData")
+# save(iso_exon_1000_A, file = "Simulated_Output/Iso_Exon_Params_1000.RData")
 ```
 
 ## Pure Sample Set-Up, Take 2
@@ -303,43 +376,53 @@ For all cell types, the 900 genes not specified to have differential isoform usa
 Cell type 1 will specify the uniform dirichlet class for the 100 differential usage genes; cell type two will specify the outlier dirichlet class; and cell type 3 will specify the paired dirichlet class. 
 
 ```{r}
-# # Specify isoform Dirichlet distribution type
-# # Note: gene clusters chosen so number isoforms I >= 3 for all genes
-# CT1_iso_dist = rep("uniform", times = nrow(nTE_filtered))
-# CT2_iso_dist = ifelse(geneInfo$gene_names %in% genesDiffUsage, "outlier", "uniform")
-# CT3_iso_dist = ifelse(geneInfo$gene_names %in% genesDiffUsage, "paired", "uniform")
-# 
-# 
-# # Output for iso_exon_info(): for each cluster corresponding to the 1,000 genes of interest, 
-# #     records the alpha parameters for the isoform dirichlet dist (iso_alpha), 
-# #     the probability vector associated with the isoform distribution (rho),
-# #     the negative binomial mean parameters for all relevant exon sets (mu),
-# #     and a character vector of the relevant exon sets (exon_sets)
-# 
-# iso_exon_1000 = list()
-# 
-# iso_exon_1000[["CT1"]] = iso_exon_info2(genes_info = geneCtDiffExp[,1:n],
-#                                        nTE_filtered = nTE_filtered,
-#                                        iso_dist = CT1_iso_dist,
-#                                        alphaRange = c(20,50),
-#                                        EffLen_info = X_info, seed = seeds[5])
-# 
-# iso_exon_1000[["CT2"]] = iso_exon_info2(genes_info = geneCtDiffExp[,(n+1):(2*n)],
-#                                        nTE_filtered = nTE_filtered,
-#                                        iso_dist = CT2_iso_dist,
-#                                        alphaRange = c(20,50),
-#                                        EffLen_info = X_info, seed = seeds[6])
-# 
-# iso_exon_1000[["CT3"]] = iso_exon_info2(genes_info = geneCtDiffExp[,(2*n+1):(3*n)],
-#                                        nTE_filtered = nTE_filtered,
-#                                        iso_dist = CT3_iso_dist,
-#                                        alphaRange = c(10,50),
-#                                        EffLen_info = X_info, seed = seeds[7])
+
+# Specify isoform Dirichlet distribution type
+# Note: gene clusters chosen so number isoforms I >= 3 for all genes
+CT1_iso_dist = rep("uniform", times = nrow(nTE_filtered))
+CT2_iso_dist = ifelse(nTE_filtered$geneId %in% genesDiffUsage, "outlier", "uniform")
+CT3_iso_dist = ifelse(nTE_filtered$geneId %in% genesDiffUsage, "paired", "uniform")
+
+names(CT1_iso_dist) = nTE_filtered$geneId
+names(CT2_iso_dist) = nTE_filtered$geneId
+names(CT3_iso_dist) = nTE_filtered$geneId
+
+# Check
+sum(CT1_iso_dist == "uniform")
+sum(CT2_iso_dist == "outlier")
+sum(CT3_iso_dist == "paired")
+
+# Output for iso_exon_info(): for each cluster corresponding to the 1,000 genes of interest, 
+#     records the alpha parameters for the isoform dirichlet dist (iso_alpha), 
+#     the probability vector associated with the isoform distribution (rho),
+#     the negative binomial mean parameters for all relevant exon sets (mu),
+#     and a character vector of the relevant exon sets (exon_sets)
+
+iso_exon_1000_B = list()
+
+iso_exon_1000_B[["CT1"]] = iso_exon_info2(genes_info = geneCtDiffExp[which(rownames(geneCtDiffExp) %in% nTE_filtered$geneId),1:n],
+                                       nTE_filtered = nTE_filtered,
+                                       iso_dist = CT1_iso_dist,
+                                       alphaRange = c(10,50),
+                                       EffLen_info = X_info, seed = seeds[5])
+
+iso_exon_1000_B[["CT2"]] = iso_exon_info2(genes_info = geneCtDiffExp[which(rownames(geneCtDiffExp) %in% nTE_filtered$geneId),(n+1):(2*n)],
+                                       nTE_filtered = nTE_filtered,
+                                       iso_dist = CT2_iso_dist,
+                                       alphaRange = c(10,50),
+                                       EffLen_info = X_info, seed = seeds[6])
+
+iso_exon_1000_B[["CT3"]] = iso_exon_info2(genes_info = geneCtDiffExp[which(rownames(geneCtDiffExp) %in% nTE_filtered$geneId),(2*n+1):(3*n)],
+                                       nTE_filtered = nTE_filtered,
+                                       iso_dist = CT3_iso_dist,
+                                       alphaRange = c(10,50),
+                                       EffLen_info = X_info, seed = seeds[7])
+
 
 ```
 
 ```{r, eval=FALSE}
-# save(iso_exon_1000, file = "Simulated_Output/Iso_Exon_Params_1000_2.RData")
+save(iso_exon_1000_B, file = "Simulated_Output/Iso_Exon_Params_1000_2.RData")
 ```
 
 ## Pure Sample Set-Up, Take 3
@@ -367,14 +450,18 @@ The gene counts for the 'other' 4,172 genes will be approx. evenly distributed a
 ```{r}
 # Specify isoform Dirichlet distribution type
 # Note: gene clusters chosen so number isoforms I >= 3 for all genes
-CT1_iso_dist = ifelse(geneInfo$gene_names %in% genesDiffUsage, "outlier1", "uniform")
-CT2_iso_dist = ifelse(geneInfo$gene_names %in% genesDiffUsage, "outlier2", "uniform")
-CT3_iso_dist = ifelse(geneInfo$gene_names %in% genesDiffUsage, "outlier3", "uniform")
+CT1_iso_dist = ifelse(nTE_filtered$geneId %in% genesDiffUsage, "outlier1", "uniform")
+CT2_iso_dist = ifelse(nTE_filtered$geneId %in% genesDiffUsage, "outlier2", "uniform")
+CT3_iso_dist = ifelse(nTE_filtered$geneId %in% genesDiffUsage, "outlier3", "uniform")
+
+names(CT1_iso_dist) = nTE_filtered$geneId
+names(CT2_iso_dist) = nTE_filtered$geneId
+names(CT3_iso_dist) = nTE_filtered$geneId
 
 # Check
 sum(CT1_iso_dist == "outlier1")
-sum(CT1_iso_dist == "outlier2")
-sum(CT1_iso_dist == "outlier3")
+sum(CT2_iso_dist == "outlier2")
+sum(CT3_iso_dist == "outlier3")
 
 # Output for iso_exon_info(): for each cluster corresponding to the 1,000 genes of interest, 
 #     records the alpha parameters for the isoform dirichlet dist (iso_alpha), 
@@ -382,21 +469,21 @@ sum(CT1_iso_dist == "outlier3")
 #     the negative binomial mean parameters for all relevant exon sets (mu),
 #     and a character vector of the relevant exon sets (exon_sets)
 
-iso_exon_1000 = list()
+iso_exon_1000_C = list()
 
-iso_exon_1000[["CT1"]] = iso_exon_info3(genes_info = geneCtDiffExp[,1:n],
+iso_exon_1000_C[["CT1"]] = iso_exon_info3(genes_info = geneCtDiffExp[which(rownames(geneCtDiffExp) %in% nTE_filtered$geneId),1:n],
                                        nTE_filtered = nTE_filtered,
                                        iso_dist = CT1_iso_dist,
                                        alphaRange = c(5,50),
                                        EffLen_info = X_info, seed = seeds[5])
 
-iso_exon_1000[["CT2"]] = iso_exon_info3(genes_info = geneCtDiffExp[,(n+1):(2*n)],
+iso_exon_1000_C[["CT2"]] = iso_exon_info3(genes_info = geneCtDiffExp[which(rownames(geneCtDiffExp) %in% nTE_filtered$geneId),(n+1):(2*n)],
                                        nTE_filtered = nTE_filtered,
                                        iso_dist = CT2_iso_dist,
                                        alphaRange = c(5,50),
                                        EffLen_info = X_info, seed = seeds[6])
 
-iso_exon_1000[["CT3"]] = iso_exon_info3(genes_info = geneCtDiffExp[,(2*n+1):(3*n)],
+iso_exon_1000_C[["CT3"]] = iso_exon_info3(genes_info = geneCtDiffExp[which(rownames(geneCtDiffExp) %in% nTE_filtered$geneId),(2*n+1):(3*n)],
                                        nTE_filtered = nTE_filtered,
                                        iso_dist = CT3_iso_dist,
                                        alphaRange = c(5,50),
@@ -405,7 +492,7 @@ iso_exon_1000[["CT3"]] = iso_exon_info3(genes_info = geneCtDiffExp[,(2*n+1):(3*n
 ```
 
 ```{r, eval=FALSE}
-save(iso_exon_1000, file = "Simulated_Output/Iso_Exon_Params_1000_3.RData")
+save(iso_exon_1000_C, file = "Simulated_Output/Iso_Exon_Params_1000_3.RData")
 ```
 
 
@@ -421,19 +508,19 @@ nTE_other = other_geneInfo$nTE_other
 #     distributing the count for a gene approx. uniformly across these exon sets.
 iso_exon_other = list()
 
-iso_exon_other[["CT1"]] = other_exonset_count(genes_info = geneCtDiffExp[,1:n],
+iso_exon_other[["CT1"]] = other_exonset_count(genes_info = geneCtDiffExp[which(rownames(geneCtDiffExp) %in% nTE_other$geneId),1:n],
                                               nTE_other = nTE_other,
                                               exon_sets_other = exon_sets_other,
                                               iso_dist = rep("uniform", times = nrow(nTE_other)),
                                               alphaRange = c(20,50), seed = seeds[8])
 
-iso_exon_other[["CT2"]] = other_exonset_count(genes_info = geneCtDiffExp[,(n+1):(2*n)],
+iso_exon_other[["CT2"]] = other_exonset_count(genes_info = geneCtDiffExp[which(rownames(geneCtDiffExp) %in% nTE_other$geneId),(n+1):(2*n)],
                                               nTE_other = nTE_other,
                                               exon_sets_other = exon_sets_other,
                                               iso_dist = rep("uniform", times = nrow(nTE_other)),
                                               alphaRange = c(20,50), seed = seeds[9])
 
-iso_exon_other[["CT3"]] = other_exonset_count(genes_info = geneCtDiffExp[,(2*n+1):(3*n)],
+iso_exon_other[["CT3"]] = other_exonset_count(genes_info = geneCtDiffExp[which(rownames(geneCtDiffExp) %in% nTE_other$geneId),(2*n+1):(3*n)],
                                               nTE_other = nTE_other,
                                               exon_sets_other = exon_sets_other,
                                               iso_dist = rep("uniform", times = nrow(nTE_other)),
@@ -466,22 +553,24 @@ files3 = str_c("CT3_ref_",rep_pure,"_counts")
 
 ```{r, eval=FALSE}
 # Take 1
-# counts_output(exonInfo_1000 = iso_exon_1000, exonInfo_other = iso_exon_other,
+# counts_output(exonInfo_1000 = iso_exon_1000_A, exonInfo_other = iso_exon_other,
 #               theta = geneInfo$theta,
 #               file_labels = c(files1, files2, files3),
 #               folder = "Simulated_Output/Pure Sample Counts", seed = seeds[11])
 
 # Take 2
-# counts_output(exonInfo_1000 = iso_exon_1000, exonInfo_other = iso_exon_other,
+# counts_output(exonInfo_1000 = iso_exon_1000_B, exonInfo_other = iso_exon_other,
 #               theta = geneInfo$theta,
 #               file_labels = c(files1, files2, files3),
 #               folder = "Simulated_Output/Pure Sample Counts 2", seed = seeds[11])
 
 # Take 3
-counts_output(exonInfo_1000 = iso_exon_1000, exonInfo_other = iso_exon_other,
+counts_output(exonInfo_1000 = iso_exon_1000_C, exonInfo_other = iso_exon_other,
               theta = geneInfo$theta,
               file_labels = c(files1, files2, files3),
               folder = "Simulated_Output/Pure Sample Counts 3", seed = seeds[11])
+
+# length(list.files(path = "Simulated_Output/Pure Sample Counts 3", pattern = ".txt"))
 ```
 
 
