@@ -1,0 +1,181 @@
+
+R version 3.6.2 (2019-12-12) -- "Dark and Stormy Night"
+Copyright (C) 2019 The R Foundation for Statistical Computing
+Platform: x86_64-apple-darwin15.6.0 (64-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+> 
+> # The file "blueprint_meta_info.rds" has the meta infomratoin
+> 
+> meta = readRDS("blueprint_meta_info.rds")
+> dim(meta)
+[1] 614  64
+> meta[1:2,]
+    EXPERIMENT_ID  STUDY_ID CENTER_NAME SAMPLE_ID SAMPLE_NAME
+58      ERX348387 ERP001664       MPIMG ERS208284    S000GZB1
+130     ERX358031 ERP001664       MPIMG ERS208283    S000GZB5
+    INSTRUMENT_PLATFORM    INSTRUMENT_MODEL    LIBRARY_NAME
+58             ILLUMINA Illumina HiSeq 2000 I_bc_pelib_1913
+130            ILLUMINA Illumina HiSeq 2000 I_bc_pelib_1953
+                                       EXPERIMENT_ALIAS LIBRARY_LAYOUT
+58   ena-EXPERIMENT-BLUEPRINT-28-11-2013-11:05:48:045-6         SINGLE
+130 ena-EXPERIMENT-BLUEPRINT-09-12-2013-12:11:50:625-62         SINGLE
+    LIBRARY_STRATEGY EXPERIMENT_TYPE READ_QUALITIES  MOLECULE
+58           RNA-Seq   total-RNA-Seq          phred total RNA
+130          RNA-Seq   total-RNA-Seq          phred total RNA
+                                                                        SAMPLE_ONTOLOGY_URI
+58  http://purl.obolibrary.org/obo/CL_0000096;http://purl.obolibrary.org/obo/UBERON_0013756
+130 http://purl.obolibrary.org/obo/CL_0002057;http://purl.obolibrary.org/obo/UBERON_0013756
+    DISEASE_ONTOLOGY_URI DISEASE       BIOMATERIAL_PROVIDER BIOMATERIAL_TYPE
+58                  <NA>    None NIHR Cambridge BioResource     Primary Cell
+130                 <NA>    None NIHR Cambridge BioResource     Primary Cell
+                                          CELL_TYPE DONOR_AGE
+58                                mature neutrophil   50 - 55
+130 CD14-positive, CD16-negative classical monocyte   50 - 55
+    DONOR_HEALTH_STATUS DONOR_SEX DONOR_ETHNICITY  TISSUE_TYPE
+58                 <NA>      Male            <NA> venous blood
+130                <NA>      Male            <NA> venous blood
+    DONOR_REGION_OF_RESIDENCE SPECIMEN_PROCESSING SAMPLE_DESC_1
+58                East Anglia               fresh  venous blood
+130               East Anglia               fresh  venous blood
+                                      SAMPLE_DESC_3
+58                                mature neutrophil
+130 CD14-positive, CD16-negative classical monocyte
+                            CHECKSUM EXPERIMENT_STATUS
+58  90f3eefaa33499d3a95874de078641e0           private
+130 5d1643c6521e2ed9877d0545a01af41f           private
+                                                                                                    STUDY_NAME
+58  BLUEPRINT RNA-seq data for common cells in the haematopoietic lineages, from adult and cord blood samples.
+130 BLUEPRINT RNA-seq data for common cells in the haematopoietic lineages, from adult and cord blood samples.
+    FIRST_SUBMISSION_DATE SEQ_RUNS_COUNT SAMPLE_STATUS READ_STRAND CELL_LINE
+58   28-NOV-2013 11:05:52              1       private   Antisense         -
+130  09-DEC-2013 12:11:56              1       private   Antisense         -
+    DONOR_ID TISSUE_DEPOT POOL_ID POOLED_DONOR_IDS GENETIC_CHARACTERISTICS
+58    S000GZ            -       -                -                       -
+130   S000GZ            -       -                -                       -
+    TREATMENT TWIN_PAIR_ID SPECIMEN_STORAGE SAMPLE_DESC_2      DATASET_ID
+58          -            -             <NA>        S000GZ EGAD00001002675
+130         -            -             <NA>        S000GZ EGAD00001002674
+                                                                                                                                                                                            DATASET_TITLE
+58                                Blueprint: A human variation panel of genetic influences on epigenomes and transcriptomes in three immune cell types, (RNA-Seq for mature neutrophil, on genome GRCh37)
+130 Blueprint: A human variation panel of genetic influences on epigenomes and transcriptomes in three immune cell types, (RNA-Seq for CD14-positive, CD16-negative classical monocyte, on genome GRCh37)
+                                                                                                                                                                                                                                                                                          DATASET_DESCRIPTION
+58                                RNA-Seq data for 205 mature neutrophil sample(s). 205 run(s), 205 experiment(s), 205 analysis(s) on human genome GRCh37. Analysis documentation available at http://ftp.ebi.ac.uk/pub/databases/blueprint/blueprint_Epivar/protocols/README_rnaseq_analysis_sanger_20160816
+130 RNA-Seq data for 197 CD14-positive, CD16-negative classical monocyte sample(s). 197 run(s), 197 experiment(s), 197 analysis(s) on human genome GRCh37. Analysis documentation available at http://ftp.ebi.ac.uk/pub/databases/blueprint/blueprint_Epivar/protocols/README_rnaseq_analysis_sanger_20160816
+    FILETYPE CHECKSUM_METHOD            EGAF V2      filesize
+58       bam             MD5 EGAF00001330389  1 3.134225e-314
+130      bam             MD5 EGAF00001330530  1 4.036434e-314
+                                                                                      filename
+58                                                                     EGAF00001330389.bam.cip
+130 EGAZ00001234525_release_wp10_20160822_S000GZB5.total_RNA.STAR_wtsi.GRCh37.20150724.bam.cip
+       RUN_ID      EGA_RUN_ID EGA_EXPERIMENT_ID  EGA_DATASET_ID
+58  ERR376010 EGAR00001149125   EGAX00001144650 EGAD00001002675
+130 ERR385785 EGAR00001155928   EGAX00001151322 EGAD00001002674
+    CULTURE_CONDITIONS LINEAGE DIFFERENTIATION_STAGE MEDIUM FILE_TYPE
+58                          NA                    NA     NA     fastq
+130                         NA                    NA     NA     fastq
+> 
+> sapply(c("LIBRARY_LAYOUT","LIBRARY_STRATEGY","BIOMATERIAL_TYPE","CELL_TYPE",
++          "DONOR_SEX","DONOR_ETHNICITY","TISSUE_TYPE","SPECIMEN_PROCESSING",
++          "DATASET_ID","DATASET_TITLE"),
++        function(xx) table(meta[,xx], useNA="ifany"))
+$LIBRARY_LAYOUT
+
+PAIRED SINGLE 
+   221    393 
+
+$LIBRARY_STRATEGY
+
+RNA-Seq 
+    614 
+
+$BIOMATERIAL_TYPE
+
+Primary Cell 
+         614 
+
+$CELL_TYPE
+
+CD14-positive, CD16-negative classical monocyte 
+                                            197 
+                CD4-positive, alpha-beta T cell 
+                                            212 
+                              mature neutrophil 
+                                            205 
+
+$DONOR_SEX
+
+Female   Male 
+   328    286 
+
+$DONOR_ETHNICITY
+
+Northern European              <NA> 
+               33               581 
+
+$TISSUE_TYPE
+
+venous blood 
+         614 
+
+$SPECIMEN_PROCESSING
+
+fresh 
+  614 
+
+$DATASET_ID
+
+EGAD00001002671 EGAD00001002674 EGAD00001002675 
+            212             197             205 
+
+$DATASET_TITLE
+
+Blueprint: A human variation panel of genetic influences on epigenomes and transcriptomes in three immune cell types, (RNA-Seq for CD14-positive, CD16-negative classical monocyte, on genome GRCh37) 
+                                                                                                                                                                                                  197 
+                Blueprint: A human variation panel of genetic influences on epigenomes and transcriptomes in three immune cell types, (RNA-Seq for CD4-positive, alpha-beta T cell, on genome GRCh37) 
+                                                                                                                                                                                                  212 
+                              Blueprint: A human variation panel of genetic influences on epigenomes and transcriptomes in three immune cell types, (RNA-Seq for mature neutrophil, on genome GRCh37) 
+                                                                                                                                                                                                  205 
+
+> 
+> table(meta$LIBRARY_LAYOUT, meta$DATASET_ID)
+        
+         EGAD00001002671 EGAD00001002674 EGAD00001002675
+  PAIRED             209               3               9
+  SINGLE               3             194             196
+> 
+> sessionInfo()
+R version 3.6.2 (2019-12-12)
+Platform: x86_64-apple-darwin15.6.0 (64-bit)
+Running under: macOS Catalina 10.15.3
+
+Matrix products: default
+BLAS:   /Library/Frameworks/R.framework/Versions/3.6/Resources/lib/libRblas.0.dylib
+LAPACK: /Library/Frameworks/R.framework/Versions/3.6/Resources/lib/libRlapack.dylib
+
+locale:
+[1] en_US.UTF-8/en_US.UTF-8/en_US.UTF-8/C/en_US.UTF-8/en_US.UTF-8
+
+attached base packages:
+[1] stats     graphics  grDevices utils     datasets  methods   base     
+
+loaded via a namespace (and not attached):
+[1] compiler_3.6.2
+> 
+> q(save="no")
+> proc.time()
+   user  system elapsed 
+  0.176   0.039   0.202 

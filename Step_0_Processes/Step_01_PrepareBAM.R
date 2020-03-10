@@ -15,23 +15,25 @@
 # Needed arguments (see Step_0_Directions.Rmd for details):
 # inputDirectory, workingDirectory
 
-#Generate initial list of files: (NOTE: this takes into account and ignores any .bam.bai files also included)
+# Generate initial list of files: (NOTE: this takes into account and 
+# ignores any .bam.bai files also included)
 init_list = list.files(path = inputDirectory, pattern=".bam")
+init_list
 
-#Generate list of .bai files
+# Generate list of .bai files
 int_list = list.files(path = inputDirectory, pattern=".bai")
 
-#Final List (excluding .bai files):
+# Final List (excluding .bai files):
 BAM_list = setdiff(init_list,int_list)
 
 # -----------------------------------------------------------------
 # check the bam files
 # -----------------------------------------------------------------
 
-#Checks length of BAM files to ensure all has run properly:
+# Checks length of BAM files to ensure all has run properly:
 length(BAM_list)
 
-#Displays BAM list as another check for errors:
+# Displays BAM list as another check for errors:
 BAM_list
 
 bam2use = BAM_list
@@ -53,13 +55,13 @@ for(i in 1:length(BAM_list)){
   # counting
   # ----------------------------------------------------------
   ctF  = sprintf("%s/count_%s.txt", inputDirectory, sami)
-  cmd1 = sprintf("samtools view %s | wc -l >> %s \n", bam2use[i], ctF)
+  cmd1 = sprintf("samtools view %s/%s | wc -l > %s \n", inputDirectory, bam2use[i], ctF)
   system(cmd1)
   
   # ----------------------------------------------------------
   # sorting
   # ----------------------------------------------------------
-  cmd2 = sprintf("samtools sort -n %s -o %s/%s", bam2use[i], inputDirectory, sami)
+  cmd2 = sprintf("samtools sort -n %s/%s -o %s/%s.bam", inputDirectory, bam2use[i], inputDirectory, sami)
   system(cmd2)
   bamF = sprintf("%s/%s.bam", inputDirectory, sami)
   
@@ -74,7 +76,7 @@ for(i in 1:length(BAM_list)){
   cmd3   = sprintf("samtools view %s/%s_uniq_filtered.bam | wc -l >> %s\n", inputDirectory, sami, ctF)
   system(cmd3)
   
-  system(sprintf("rm %s/%s", inputDirectory, sami))
+  system(sprintf("rm %s/%s.bam", inputDirectory, sami))
   # system(sprintf("rm %s/count_%s.txt", inputDirectory, sami))
   
 }
@@ -85,5 +87,7 @@ if(inputDirectory != workingDirectory){
   for(i in 1:length(output_list)){
     cmd4 = sprintf("cp %s/%s %s/%s \n", inputDirectory, output_list[i], 
                    workingDirectory, output_list[i])
+    system(cmd4)
   }
 }
+
